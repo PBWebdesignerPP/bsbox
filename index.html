@@ -39,6 +39,13 @@ width:100%;
 margin:4px 0
 }
 
+textarea{
+padding:10px;
+font-size:16px;
+width:100%;
+margin-top:10px
+}
+
 button{
 padding:10px;
 font-size:16px;
@@ -136,6 +143,8 @@ border-top:1px solid #ccc
 <div id="pedido"></div>
 
 <div class="total" id="totalPedido">Total: R$ 0</div>
+
+<textarea id="observacao" placeholder="Observações do pedido (forma de pagamento, prazo, entrega, etc.)"></textarea>
 
 <button onclick="novoPedido()">Novo Pedido</button>
 <button onclick="gerarPDF()">Gerar PDF</button>
@@ -427,6 +436,7 @@ function novoPedido(){
 if(!confirm("Iniciar novo pedido?")) return
 
 pedido={}
+document.getElementById("observacao").value=""
 
 render()
 
@@ -441,6 +451,7 @@ const {jsPDF}=window.jspdf
 let doc=new jsPDF()
 
 let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
+let obs=document.getElementById("observacao").value||""
 
 let y=20
 
@@ -469,6 +480,16 @@ y+=10
 
 doc.text("TOTAL: R$ "+total.toFixed(2),20,y)
 
+if(obs){
+
+y+=10
+doc.text("Observações:",20,y)
+
+y+=8
+doc.text(obs,20,y)
+
+}
+
 doc.save("pedido_bsbox.pdf")
 
 }
@@ -478,10 +499,10 @@ doc.save("pedido_bsbox.pdf")
 function gerarExcel(){
 
 let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
-
+let obs=document.getElementById("observacao").value||""
 let data=new Date().toLocaleDateString()
 
-let rows=[["cliente","data","codigo","produto","unidades","fornecedor","valor_unit","total"]]
+let rows=[["cliente","data","codigo","produto","unidades","fornecedor","valor_unit","total","observacao"]]
 
 Object.keys(pedido).forEach(c=>{
 
@@ -489,7 +510,7 @@ let p=pedido[c]
 
 let total=p.qtd*p.valor
 
-rows.push([cliente,data,c,p.produto,p.qtd,p.fornecedor,p.valor,total])
+rows.push([cliente,data,c,p.produto,p.qtd,p.fornecedor,p.valor,total,obs])
 
 })
 
@@ -508,8 +529,15 @@ XLSX.writeFile(wb,"pedido_bsbox.xlsx")
 function enviarWhats(){
 
 let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
+let obs=document.getElementById("observacao").value||""
 
-let texto=`Pedido BS BOX\nCliente: ${cliente}\nArquivos PDF e Excel gerados.`
+let texto=`Pedido BS BOX
+Cliente: ${cliente}
+
+Observações:
+${obs}
+
+Arquivos PDF e Excel gerados.`
 
 window.open("https://wa.me/?text="+encodeURIComponent(texto))
 
