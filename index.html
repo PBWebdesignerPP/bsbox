@@ -30,8 +30,12 @@ button:hover{background:#444}
 <h2>BS Box</h2>
 
 <div class="topbar">
-<button onclick="carregarAutomatico()">Atualizar Catálogo</button>
+<!-- BOTÃO DE ATUALIZAR CATALOGO -->
+<button onclick="atualizarCatalogo()">Atualizar Catálogo</button>
+
+<!-- UPLOAD MANUAL -->
 <input type="file" id="fileInput" accept=".xlsx"/>
+
 <input id="cliente" placeholder="Nome do cliente"/>
 <input id="busca" placeholder="Buscar produto..." oninput="render()"/>
 <select id="filtroCategoria" onchange="render()"><option value="">Todas categorias</option></select>
@@ -55,33 +59,31 @@ button:hover{background:#444}
 let produtos=[]
 let pedido={}
 
-/* SALVAR CATALOGO LOCAL */
-function salvarCatalogo(){
-    localStorage.setItem("bsbox_catalogo",JSON.stringify(produtos))
-}
-function carregarCatalogoLocal(){
-    let cat=localStorage.getItem("bsbox_catalogo")
-    if(cat){
-        produtos=JSON.parse(cat)
-        popularFiltros()
-        render()
-    }
-}
+/* FUNÇÃO DEFINITIVA DE ATUALIZAR CATALOGO */
+async function atualizarCatalogo(){
+    if(!confirm("Deseja atualizar o catálogo? Todos os dados antigos serão substituídos.")) return;
 
-/* CARREGAR AUTOMATICO DO GITHUB SEM CACHE */
-async function carregarAutomatico(){
-    try{
-        // substitua pela URL raw do seu GitHub
-        const urlBase = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/base_de_produtos.xlsx"
-        const url = urlBase + "?t=" + new Date().getTime(); // força sempre pegar versão nova
-        const resp = await fetch(url, {cache: "no-store"})
-        if(!resp.ok) throw new Error("Erro ao buscar planilha")
-        const data = await resp.arrayBuffer()
-        processarExcel(data)
-        console.log("Planilha atualizada do GitHub com sucesso")
-    }catch(e){
-        console.log("Erro ao carregar do GitHub, usando catálogo local", e)
-        carregarCatalogoLocal()
+    // Limpar dados locais
+    localStorage.removeItem("bsbox_catalogo");
+    produtos = [];
+    render();
+
+    try {
+        // URL direta da planilha no GitHub
+        const urlBase = "https://raw.githubusercontent.com/PBWebdesignerPP/bsbox/main/base_de_produtos.xlsx";
+        const url = urlBase + "?t=" + new Date().getTime(); // força versão nova
+
+        const resp = await fetch(url, {cache: "no-store"});
+        if(!resp.ok) throw new Error("Erro ao buscar planilha");
+
+        const data = await resp.arrayBuffer();
+
+        processarExcel(data);
+        alert("Catálogo atualizado com sucesso!");
+    } catch(e){
+        console.log("Erro ao atualizar catálogo:", e);
+        alert("Não foi possível atualizar o catálogo. Usando dados locais.");
+        carregarCatalogoLocal();
     }
 }
 
@@ -117,6 +119,17 @@ function processarExcel(data){
     salvarCatalogo()
     popularFiltros()
     render()
+}
+
+/* SALVAR E CARREGAR LOCAL */
+function salvarCatalogo(){localStorage.setItem("bsbox_catalogo",JSON.stringify(produtos))}
+function carregarCatalogoLocal(){
+    let cat=localStorage.getItem("bsbox_catalogo")
+    if(cat){
+        produtos=JSON.parse(cat)
+        popularFiltros()
+        render()
+    }
 }
 
 /* FILTROS */
@@ -167,21 +180,8 @@ function render(){
 }
 
 /* CONTROLE QUANTIDADE */
-function mais(c){
-    let prod=produtos.find(p=>p.codigo==c)
-    if(!pedido[c]){
-        pedido[c]={produto:prod.descricao,qtd:1,valor:prod.valorUnit,fornecedor:prod.fornecedor}
-    }else{
-        pedido[c].qtd++
-    }
-    render()
-}
-function menos(c){
-    if(!pedido[c]) return
-    pedido[c].qtd--
-    if(pedido[c].qtd<=0) delete pedido[c]
-    render()
-}
+function mais(c){let prod=produtos.find(p=>p.codigo==c); if(!pedido[c]){pedido[c]={produto:prod.descricao,qtd:1,valor:prod.valorUnit,fornecedor:prod.fornecedor}}else{pedido[c].qtd++}render()}
+function menos(c){if(!pedido[c]) return; pedido[c].qtd--; if(pedido[c].qtd<=0) delete pedido[c]; render()}
 
 /* RENDER PEDIDO */
 function renderPedido(){
@@ -211,12 +211,7 @@ function renderPedido(){
 }
 
 /* NOVO PEDIDO */
-function novoPedido(){
-    if(!confirm("Iniciar novo pedido?")) return
-    pedido={}
-    document.getElementById("observacao").value=""
-    render()
-}
+function novoPedido(){if(!confirm("Iniciar novo pedido?")) return; pedido={}; document.getElementById("observacao").value=""; render()}
 
 /* PDF */
 function gerarPDF(){
@@ -273,13 +268,8 @@ Arquivos PDF e Excel gerados.`
     window.open("https://wa.me/?text="+encodeURIComponent(texto))
 }
 
-/* SERVICE WORKER */
-if("serviceWorker" in navigator){
-    navigator.serviceWorker.register("sw.js")
-}
-
-/* INICIAR */
-carregarAutomatico() // <-- inicia carregamento GitHub ao abrir
+/* INICIAR COM DADOS LOCAIS */
+carregarCatalogoLocal()
 </script>
 </body>
 </html>
