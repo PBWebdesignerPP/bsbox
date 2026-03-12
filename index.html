@@ -30,7 +30,6 @@ button:hover { background:#444 }
 <h2>BS Box</h2>
 
 <div class="topbar">
-<button onclick="carregarAutomatico()">Atualizar Catálogo</button>
 <input type="file" id="fileInput" accept=".xlsx"/>
 <input id="cliente" placeholder="Nome do cliente"/>
 <input id="busca" placeholder="Buscar produto..." oninput="render()"/>
@@ -66,12 +65,10 @@ function carregarCatalogoLocal(){
         produtos = JSON.parse(cat);
         popularFiltros();
         render();
-    } else {
-        carregarAutomatico();
     }
 }
 
-/* CARREGAR AUTOMATICO DO GITHUB */
+/* CARREGAR AUTOMATICO DO GITHUB AO ABRIR */
 async function carregarAutomatico(){
     try{
         const url = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/base_de_produtos.xlsx"; 
@@ -80,12 +77,12 @@ async function carregarAutomatico(){
         const data = await resp.arrayBuffer();
         processarExcel(data);
     }catch(e){
-        console.log("Erro ao carregar do GitHub, tentando catálogo local.");
+        console.log("Erro ao carregar do GitHub, usando catálogo local");
         carregarCatalogoLocal();
     }
 }
 
-/* UPLOAD PLANILHA */
+/* UPLOAD PLANILHA MANUAL */
 document.getElementById("fileInput").addEventListener("change", function(e){
     const file = e.target.files[0];
     const reader = new FileReader();
@@ -177,7 +174,6 @@ function mais(c){
     }
     render();
 }
-
 function menos(c){
     if(!pedido[c]) return;
     pedido[c].qtd--;
@@ -286,8 +282,7 @@ if("serviceWorker" in navigator){
 }
 
 /* INICIAR */
-carregarCatalogoLocal();
-
+carregarAutomatico();
 </script>
 </body>
 </html>
