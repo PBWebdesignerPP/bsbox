@@ -58,7 +58,6 @@ let pedido = {};
 function salvarCatalogo(){
     localStorage.setItem("bsbox_catalogo", JSON.stringify(produtos));
 }
-
 function carregarCatalogoLocal(){
     let cat = localStorage.getItem("bsbox_catalogo");
     if(cat){
@@ -68,16 +67,18 @@ function carregarCatalogoLocal(){
     }
 }
 
-/* CARREGAR AUTOMATICO DO GITHUB AO ABRIR */
+/* CARREGAR AUTOMATICO DO GITHUB SEM CACHE */
 async function carregarAutomatico(){
     try{
-        const url = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/base_de_produtos.xlsx"; 
-        // Substitua SEU_USUARIO e SEU_REPOSITORIO pela URL correta
-        const resp = await fetch(url);
+        const urlBase = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/base_de_produtos.xlsx";
+        const url = urlBase + "?t=" + new Date().getTime(); // força sempre carregar versão nova
+        const resp = await fetch(url, {cache: "no-store"});
+        if(!resp.ok) throw new Error("Erro ao buscar planilha");
         const data = await resp.arrayBuffer();
         processarExcel(data);
+        console.log("Planilha carregada do GitHub com sucesso");
     }catch(e){
-        console.log("Erro ao carregar do GitHub, usando catálogo local");
+        console.log("Erro ao carregar do GitHub, usando catálogo local", e);
         carregarCatalogoLocal();
     }
 }
