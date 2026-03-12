@@ -1,559 +1,293 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>BS Box</title>
-
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#222222">
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <style>
-
-body{
-font-family:Arial;
-margin:0;
-padding:10px;
-background:#f2f2f2
-}
-
-h2{margin:5px 0}
-
-.topbar{
-background:white;
-padding:10px;
-border-radius:10px;
-margin-bottom:10px
-}
-
-input,select{
-padding:10px;
-font-size:16px;
-width:100%;
-margin:4px 0
-}
-
-textarea{
-padding:10px;
-font-size:16px;
-width:100%;
-margin-top:10px
-}
-
-button{
-padding:10px;
-font-size:16px;
-border:none;
-border-radius:8px;
-background:#222;
-color:white;
-margin:4px 0;
-cursor:pointer
-}
-
-button:hover{
-background:#444
-}
-
-.card{
-background:white;
-border-radius:10px;
-padding:10px;
-margin:8px 0;
-display:flex;
-justify-content:space-between;
-align-items:center
-}
-
-.prodInfo{
-flex:1;
-font-size:14px
-}
-
-.qty{
-display:flex;
-align-items:center;
-gap:6px
-}
-
-.qty button{
-width:32px;
-height:32px;
-font-size:18px
-}
-
-#pedidoBox{
-background:white;
-padding:10px;
-border-radius:10px;
-margin-top:10px
-}
-
-.total{
-font-size:18px;
-font-weight:bold;
-margin-top:10px
-}
-
-.fornecedorBox{
-margin-top:10px;
-padding-top:5px;
-border-top:1px solid #ccc
-}
-
+body { font-family: Arial; margin:0; padding:10px; background:#f2f2f2 }
+h2 { margin:5px 0 }
+.topbar { background:white; padding:10px; border-radius:10px; margin-bottom:10px }
+input, select { padding:10px; font-size:16px; width:100%; margin:4px 0 }
+textarea { padding:10px; font-size:16px; width:100%; margin-top:10px }
+button { padding:10px; font-size:16px; border:none; border-radius:8px; background:#222; color:white; margin:4px 0; cursor:pointer }
+button:hover { background:#444 }
+.card { background:white; border-radius:10px; padding:10px; margin:8px 0; display:flex; justify-content:space-between; align-items:center }
+.prodInfo { flex:1; font-size:14px }
+.qty { display:flex; align-items:center; gap:6px }
+.qty button { width:32px; height:32px; font-size:18px }
+#pedidoBox { background:white; padding:10px; border-radius:10px; margin-top:10px }
+.total { font-size:18px; font-weight:bold; margin-top:10px }
+.fornecedorBox { margin-top:10px; padding-top:5px; border-top:1px solid #ccc }
 </style>
 </head>
-
 <body>
 
 <h2>BS Box</h2>
 
 <div class="topbar">
-
 <button onclick="carregarAutomatico()">Atualizar Catálogo</button>
-
 <input type="file" id="fileInput" accept=".xlsx"/>
-
 <input id="cliente" placeholder="Nome do cliente"/>
-
 <input id="busca" placeholder="Buscar produto..." oninput="render()"/>
-
-<select id="filtroCategoria" onchange="render()">
-<option value="">Todas categorias</option>
-</select>
-
-<select id="filtroFornecedor" onchange="render()">
-<option value="">Todos fornecedores</option>
-</select>
-
+<select id="filtroCategoria" onchange="render()"><option value="">Todas categorias</option></select>
+<select id="filtroFornecedor" onchange="render()"><option value="">Todos fornecedores</option></select>
 </div>
 
 <div id="lista"></div>
 
 <div id="pedidoBox">
-
 <h3>Pedido</h3>
-
 <div id="pedido"></div>
-
 <div class="total" id="totalPedido">Total: R$ 0</div>
-
 <textarea id="observacao" placeholder="Observações do pedido (forma de pagamento, prazo, entrega, etc.)"></textarea>
-
 <button onclick="novoPedido()">Novo Pedido</button>
 <button onclick="gerarPDF()">Gerar PDF</button>
 <button onclick="gerarExcel()">Gerar Excel</button>
 <button onclick="enviarWhats()">Enviar WhatsApp</button>
-
 </div>
 
 <script>
+let produtos = [];
+let pedido = {};
 
-let produtos=[]
-let pedido={}
-
-/* SALVAR CATALOGO LOCAL */
-
+/* SALVAR E CARREGAR CATALOGO LOCAL */
 function salvarCatalogo(){
-localStorage.setItem("bsbox_catalogo",JSON.stringify(produtos))
+    localStorage.setItem("bsbox_catalogo", JSON.stringify(produtos));
 }
 
 function carregarCatalogoLocal(){
-
-let cat=localStorage.getItem("bsbox_catalogo")
-
-if(cat){
-produtos=JSON.parse(cat)
-popularFiltros()
-render()
+    let cat = localStorage.getItem("bsbox_catalogo");
+    if(cat){
+        produtos = JSON.parse(cat);
+        popularFiltros();
+        render();
+    } else {
+        carregarAutomatico();
+    }
 }
 
-}
-
-/* CARREGAR AUTOMATICO */
-
+/* CARREGAR AUTOMATICO DO GITHUB */
 async function carregarAutomatico(){
-
-try{
-
-const resp=await fetch("base_de_produtos.xlsx")
-
-const data=await resp.arrayBuffer()
-
-processarExcel(data)
-
-}catch(e){
-
-console.log("modo local")
-
-}
-
+    try{
+        const url = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/base_de_produtos.xlsx"; 
+        // Substitua SEU_USUARIO e SEU_REPOSITORIO pela URL correta
+        const resp = await fetch(url);
+        const data = await resp.arrayBuffer();
+        processarExcel(data);
+    }catch(e){
+        console.log("Erro ao carregar do GitHub, tentando catálogo local.");
+        carregarCatalogoLocal();
+    }
 }
 
 /* UPLOAD PLANILHA */
-
-document.getElementById("fileInput").addEventListener("change",function(e){
-
-const file=e.target.files[0]
-
-const reader=new FileReader()
-
-reader.onload=function(evt){
-
-processarExcel(evt.target.result)
-
-}
-
-reader.readAsArrayBuffer(file)
-
-})
+document.getElementById("fileInput").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(evt){
+        processarExcel(evt.target.result);
+    }
+    reader.readAsArrayBuffer(file);
+});
 
 /* PROCESSAR PLANILHA */
-
 function processarExcel(data){
-
-const workbook=XLSX.read(data,{type:'array'})
-
-const sheet=workbook.Sheets[workbook.SheetNames[0]]
-
-const json=XLSX.utils.sheet_to_json(sheet,{header:1})
-
-produtos=[]
-
-json.slice(1).forEach(l=>{
-
-let codigo=l[0]
-let categoria=l[1]
-let descricao=l[2]
-let fornecedor=l[3]
-let valorUnit=l[4]
-let valorCaixa=l[5]
-let volume=l[6]
-
-if(!codigo) return
-
-produtos.push({
-
-codigo:String(codigo),
-categoria:categoria,
-descricao:descricao,
-fornecedor:fornecedor,
-valorUnit:parseFloat(valorUnit)||0,
-valorCaixa:parseFloat(valorCaixa)||0,
-volume:parseInt(volume)||0
-
-})
-
-})
-
-salvarCatalogo()
-
-popularFiltros()
-
-render()
-
+    const workbook = XLSX.read(data, {type:'array'});
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, {header:1});
+    produtos = [];
+    json.slice(1).forEach(l => {
+        let [codigo, categoria, descricao, fornecedor, valorUnit, valorCaixa, volume] = l;
+        if(!codigo) return;
+        produtos.push({
+            codigo: String(codigo),
+            categoria: categoria,
+            descricao: descricao,
+            fornecedor: fornecedor,
+            valorUnit: parseFloat(valorUnit)||0,
+            valorCaixa: parseFloat(valorCaixa)||0,
+            volume: parseInt(volume)||0
+        });
+    });
+    salvarCatalogo();
+    popularFiltros();
+    render();
 }
 
 /* FILTROS */
-
 function popularFiltros(){
-
-let catSet=new Set()
-let fornSet=new Set()
-
-produtos.forEach(p=>{
-catSet.add(p.categoria)
-fornSet.add(p.fornecedor)
-})
-
-let cat=document.getElementById("filtroCategoria")
-let forn=document.getElementById("filtroFornecedor")
-
-cat.innerHTML='<option value="">Todas categorias</option>'
-forn.innerHTML='<option value="">Todos fornecedores</option>'
-
-catSet.forEach(c=>cat.innerHTML+=`<option>${c}</option>`)
-fornSet.forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
-
+    let catSet = new Set();
+    let fornSet = new Set();
+    produtos.forEach(p => { catSet.add(p.categoria); fornSet.add(p.fornecedor); });
+    let cat = document.getElementById("filtroCategoria");
+    let forn = document.getElementById("filtroFornecedor");
+    cat.innerHTML = '<option value="">Todas categorias</option>';
+    forn.innerHTML = '<option value="">Todos fornecedores</option>';
+    catSet.forEach(c => cat.innerHTML += `<option>${c}</option>`);
+    fornSet.forEach(f => forn.innerHTML += `<option>${f}</option>`);
 }
 
 /* RENDER PRODUTOS */
-
 function render(){
-
-let busca=document.getElementById("busca").value.toLowerCase()
-let cat=document.getElementById("filtroCategoria").value
-let forn=document.getElementById("filtroFornecedor").value
-
-let lista=document.getElementById("lista")
-
-lista.innerHTML=""
-
-produtos
-.filter(p=>p.descricao.toLowerCase().includes(busca))
-.filter(p=>!cat||p.categoria==cat)
-.filter(p=>!forn||p.fornecedor==forn)
-.forEach(p=>{
-
-let q=pedido[p.codigo]?.qtd||0
-
-let div=document.createElement("div")
-
-div.className="card"
-
-div.innerHTML=`
-
-<div class="prodInfo">
-
-<b>${p.descricao}</b><br>
-Código: ${p.codigo}<br>
-Categoria: ${p.categoria}<br>
-Fornecedor: ${p.fornecedor}<br>
-Volume caixa: ${p.volume} un<br>
-Valor unitário: R$ ${p.valorUnit.toFixed(2)}
-
-</div>
-
-<div class="qty">
-
-<button onclick="menos('${p.codigo}')">-</button>
-<span>${q}</span>
-<button onclick="mais('${p.codigo}')">+</button>
-
-</div>
-
-`
-
-lista.appendChild(div)
-
-})
-
-renderPedido()
-
+    let busca = document.getElementById("busca").value.toLowerCase();
+    let cat = document.getElementById("filtroCategoria").value;
+    let forn = document.getElementById("filtroFornecedor").value;
+    let lista = document.getElementById("lista");
+    lista.innerHTML = "";
+    produtos
+        .filter(p => p.descricao.toLowerCase().includes(busca))
+        .filter(p => !cat || p.categoria == cat)
+        .filter(p => !forn || p.fornecedor == forn)
+        .forEach(p => {
+            let q = pedido[p.codigo]?.qtd || 0;
+            let div = document.createElement("div");
+            div.className = "card";
+            div.innerHTML = `
+                <div class="prodInfo">
+                    <b>${p.descricao}</b><br>
+                    Código: ${p.codigo}<br>
+                    Categoria: ${p.categoria}<br>
+                    Fornecedor: ${p.fornecedor}<br>
+                    Volume caixa: ${p.volume} un<br>
+                    Valor unitário: R$ ${p.valorUnit.toFixed(2)}
+                </div>
+                <div class="qty">
+                    <button onclick="menos('${p.codigo}')">-</button>
+                    <span>${q}</span>
+                    <button onclick="mais('${p.codigo}')">+</button>
+                </div>
+            `;
+            lista.appendChild(div);
+        });
+    renderPedido();
 }
 
 /* CONTROLE QUANTIDADE */
-
 function mais(c){
-
-let prod=produtos.find(p=>p.codigo==c)
-
-if(!pedido[c]){
-
-pedido[c]={
-
-produto:prod.descricao,
-qtd:1,
-valor:prod.valorUnit,
-fornecedor:prod.fornecedor
-
-}
-
-}else{
-
-pedido[c].qtd++
-
-}
-
-render()
-
+    let prod = produtos.find(p => p.codigo == c);
+    if(!pedido[c]){
+        pedido[c] = { produto: prod.descricao, qtd:1, valor:prod.valorUnit, fornecedor:prod.fornecedor };
+    } else {
+        pedido[c].qtd++;
+    }
+    render();
 }
 
 function menos(c){
-
-if(!pedido[c]) return
-
-pedido[c].qtd--
-
-if(pedido[c].qtd<=0) delete pedido[c]
-
-render()
-
+    if(!pedido[c]) return;
+    pedido[c].qtd--;
+    if(pedido[c].qtd <= 0) delete pedido[c];
+    render();
 }
 
 /* RENDER PEDIDO */
-
 function renderPedido(){
-
-let box=document.getElementById("pedido")
-
-let total=0
-
-box.innerHTML=""
-
-let fornecedores={}
-
-Object.keys(pedido).forEach(c=>{
-
-let item=pedido[c]
-
-if(!fornecedores[item.fornecedor]) fornecedores[item.fornecedor]=[]
-
-fornecedores[item.fornecedor].push(item)
-
-})
-
-Object.keys(fornecedores).forEach(f=>{
-
-let divF=document.createElement("div")
-
-divF.className="fornecedorBox"
-
-divF.innerHTML=`<b>${f}</b>`
-
-box.appendChild(divF)
-
-fornecedores[f].forEach(item=>{
-
-let sub=item.qtd*item.valor
-
-let div=document.createElement("div")
-
-div.textContent=`${item.qtd} un - ${item.produto} - R$ ${sub.toFixed(2)}`
-
-box.appendChild(div)
-
-total+=sub
-
-})
-
-})
-
-document.getElementById("totalPedido").textContent="Total: R$ "+total.toFixed(2)
-
+    let box = document.getElementById("pedido");
+    let total = 0;
+    box.innerHTML = "";
+    let fornecedores = {};
+    Object.keys(pedido).forEach(c => {
+        let item = pedido[c];
+        if(!fornecedores[item.fornecedor]) fornecedores[item.fornecedor] = [];
+        fornecedores[item.fornecedor].push(item);
+    });
+    Object.keys(fornecedores).forEach(f => {
+        let divF = document.createElement("div");
+        divF.className = "fornecedorBox";
+        divF.innerHTML = `<b>${f}</b>`;
+        box.appendChild(divF);
+        fornecedores[f].forEach(item => {
+            let sub = item.qtd * item.valor;
+            let div = document.createElement("div");
+            div.textContent = `${item.qtd} un - ${item.produto} - R$ ${sub.toFixed(2)}`;
+            box.appendChild(div);
+            total += sub;
+        });
+    });
+    document.getElementById("totalPedido").textContent = "Total: R$ "+total.toFixed(2);
 }
 
 /* NOVO PEDIDO */
-
 function novoPedido(){
-
-if(!confirm("Iniciar novo pedido?")) return
-
-pedido={}
-document.getElementById("observacao").value=""
-
-render()
-
+    if(!confirm("Iniciar novo pedido?")) return;
+    pedido = {};
+    document.getElementById("observacao").value = "";
+    render();
 }
 
 /* PDF */
-
 function gerarPDF(){
-
-const {jsPDF}=window.jspdf
-
-let doc=new jsPDF()
-
-let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
-let obs=document.getElementById("observacao").value||""
-
-let y=20
-
-doc.text("BS BOX PEDIDO",20,10)
-doc.text("Cliente: "+cliente,20,y)
-
-y+=10
-
-let total=0
-
-Object.keys(pedido).forEach(c=>{
-
-let p=pedido[c]
-
-let sub=p.qtd*p.valor
-
-doc.text(`${p.qtd} un - ${p.produto} - R$ ${sub.toFixed(2)}`,20,y)
-
-y+=8
-
-total+=sub
-
-})
-
-y+=10
-
-doc.text("TOTAL: R$ "+total.toFixed(2),20,y)
-
-if(obs){
-
-y+=10
-doc.text("Observações:",20,y)
-
-y+=8
-doc.text(obs,20,y)
-
-}
-
-doc.save("pedido_bsbox.pdf")
-
+    const { jsPDF } = window.jspdf;
+    let doc = new jsPDF();
+    let cliente = document.getElementById("cliente").value || "SEM CLIENTE";
+    let obs = document.getElementById("observacao").value || "";
+    let y = 20;
+    doc.text("BS BOX PEDIDO",20,10);
+    doc.text("Cliente: "+cliente,20,y);
+    y += 10;
+    let total = 0;
+    Object.keys(pedido).forEach(c => {
+        let p = pedido[c];
+        let sub = p.qtd * p.valor;
+        doc.text(`${p.qtd} un - ${p.produto} - R$ ${sub.toFixed(2)}`,20,y);
+        y += 8;
+        total += sub;
+    });
+    y += 10;
+    doc.text("TOTAL: R$ "+total.toFixed(2),20,y);
+    if(obs){
+        y += 10;
+        doc.text("Observações:",20,y);
+        y += 8;
+        doc.text(obs,20,y);
+    }
+    doc.save("pedido_bsbox.pdf");
 }
 
 /* EXCEL */
-
 function gerarExcel(){
-
-let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
-let obs=document.getElementById("observacao").value||""
-let data=new Date().toLocaleDateString()
-
-let rows=[["cliente","data","codigo","produto","unidades","fornecedor","valor_unit","total","observacao"]]
-
-Object.keys(pedido).forEach(c=>{
-
-let p=pedido[c]
-
-let total=p.qtd*p.valor
-
-rows.push([cliente,data,c,p.produto,p.qtd,p.fornecedor,p.valor,total,obs])
-
-})
-
-let ws=XLSX.utils.aoa_to_sheet(rows)
-
-let wb=XLSX.utils.book_new()
-
-XLSX.utils.book_append_sheet(wb,ws,"pedido")
-
-XLSX.writeFile(wb,"pedido_bsbox.xlsx")
-
+    let cliente = document.getElementById("cliente").value || "SEM CLIENTE";
+    let obs = document.getElementById("observacao").value || "";
+    let data = new Date().toLocaleDateString();
+    let rows = [["cliente","data","codigo","produto","unidades","fornecedor","valor_unit","total","observacao"]];
+    Object.keys(pedido).forEach(c => {
+        let p = pedido[c];
+        let total = p.qtd * p.valor;
+        rows.push([cliente,data,c,p.produto,p.qtd,p.fornecedor,p.valor,total,obs]);
+    });
+    let ws = XLSX.utils.aoa_to_sheet(rows);
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"pedido");
+    XLSX.writeFile(wb,"pedido_bsbox.xlsx");
 }
 
 /* WHATSAPP */
-
 function enviarWhats(){
-
-let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
-let obs=document.getElementById("observacao").value||""
-
-let texto=`Pedido BS BOX
+    let cliente = document.getElementById("cliente").value || "SEM CLIENTE";
+    let obs = document.getElementById("observacao").value || "";
+    let texto = `Pedido BS BOX
 Cliente: ${cliente}
 
 Observações:
 ${obs}
 
-Arquivos PDF e Excel gerados.`
-
-window.open("https://wa.me/?text="+encodeURIComponent(texto))
-
+Arquivos PDF e Excel gerados.`;
+    window.open("https://wa.me/?text="+encodeURIComponent(texto));
 }
 
 /* SERVICE WORKER */
-
 if("serviceWorker" in navigator){
-navigator.serviceWorker.register("sw.js")
+    navigator.serviceWorker.register("sw.js");
 }
 
 /* INICIAR */
-
-carregarCatalogoLocal()
+carregarCatalogoLocal();
 
 </script>
-
 </body>
 </html>
