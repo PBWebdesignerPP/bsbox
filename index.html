@@ -458,16 +458,15 @@ doc.setFontSize(9)
 let y=10
 
 doc.text("CONECTA VAREJO",10,y)
-
-y+=6
-
+y+=5
 doc.text("Pedido "+numeroPedido,10,y)
+y+=5
 
-y+=6
+let cliente=document.getElementById("cliente").value||""
 
-doc.text("Cliente: "+(document.getElementById("cliente").value||""),10,y)
+doc.text("Cliente: "+cliente,10,y)
 
-y+=10
+y+=8
 
 let porFornecedor={}
 
@@ -483,9 +482,25 @@ let totalPedido=0
 
 Object.keys(porFornecedor).forEach(f=>{
 
+doc.setFont(undefined,"bold")
 doc.text("Fornecedor: "+f,10,y)
 
 y+=5
+
+doc.setFont(undefined,"normal")
+
+// CABEÇALHO COLUNAS
+doc.text("Código",10,y)
+doc.text("Uni",30,y)
+doc.text("V.Unit",45,y)
+doc.text("V.Total",65,y)
+doc.text("Descrição",90,y)
+
+y+=3
+
+doc.line(10,y,200,y)
+
+y+=4
 
 let subtotal=0
 
@@ -493,28 +508,58 @@ porFornecedor[f].forEach(p=>{
 
 let sub=p.qtd*p.valor
 
-let linha=`${p.qtd}x ${p.produto}  ${p.valor.toFixed(2)}  ${sub.toFixed(2)}`
+let descricaoLinhas=doc.splitTextToSize(p.produto,100)
 
-let linhas=doc.splitTextToSize(linha,180)
+descricaoLinhas.forEach((linha,i)=>{
 
-doc.text(linhas,10,y)
+if(y>280){
 
-y+=linhas.length*4
+doc.addPage()
+y=10
+
+}
+
+if(i===0){
+
+doc.text(String(p.codigo||""),10,y)
+doc.text(String(p.qtd),30,y)
+doc.text(p.valor.toFixed(2),45,y)
+doc.text(sub.toFixed(2),65,y)
+
+}
+
+doc.text(linha,90,y)
+
+y+=4
+
+})
 
 subtotal+=sub
 totalPedido+=sub
 
 })
 
-doc.text("Subtotal "+f+": "+subtotal.toFixed(2),10,y)
+y+=2
 
-y+=6
-
-})
+doc.line(10,y,200,y)
 
 y+=5
 
+doc.setFont(undefined,"bold")
+
+doc.text("Subtotal "+f+": "+subtotal.toFixed(2),10,y)
+
+doc.setFont(undefined,"normal")
+
+y+=8
+
+})
+
+doc.setFont(undefined,"bold")
+
 doc.text("TOTAL PEDIDO: "+totalPedido.toFixed(2),10,y)
+
+doc.setFont(undefined,"normal")
 
 y+=8
 
@@ -533,30 +578,6 @@ doc.text(linhas,10,y)
 }
 
 doc.save("pedido_"+numeroPedido+".pdf")
-
-}
-
-function gerarExcel(){
-
-let rows=[["Fornecedor","Codigo","Produto","Quantidade","Unit","Subtotal"]]
-
-Object.keys(pedido).forEach(c=>{
-
-let p=pedido[c]
-
-let sub=p.qtd*p.valor
-
-rows.push([p.fornecedor,c,p.produto,p.qtd,p.valor,sub])
-
-})
-
-let ws=XLSX.utils.aoa_to_sheet(rows)
-
-let wb=XLSX.utils.book_new()
-
-XLSX.utils.book_append_sheet(wb,ws,"Pedido")
-
-XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
 
 }
 
