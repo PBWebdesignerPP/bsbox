@@ -79,7 +79,7 @@ gap:5px;
 }
 
 .qty input{
-width:40px;
+width:45px;
 text-align:center;
 }
 
@@ -112,7 +112,6 @@ flex-direction:column;
 
 .catalogo{
 height:55vh;
-overflow:auto;
 }
 
 .pedido{
@@ -135,7 +134,7 @@ border-top:1px solid #ddd;
 
 <div>
 <b>Conecta Varejo</b><br>
-Presidente Prudente
+Sistema de Pedidos
 </div>
 
 </header>
@@ -150,14 +149,18 @@ Presidente Prudente
 
 <input id="cliente" placeholder="Cliente">
 
-<input id="busca" placeholder="Buscar..." oninput="render()">
+<br><br>
+
+<input id="busca" placeholder="Buscar produto ou código" oninput="render()">
+
+<br><br>
 
 <select id="filtroCategoria" onchange="render()">
-<option value="">Categorias</option>
+<option value="">Todas categorias</option>
 </select>
 
 <select id="filtroFornecedor" onchange="render()">
-<option value="">Fornecedores</option>
+<option value="">Todos fornecedores</option>
 </select>
 
 <div id="lista"></div>
@@ -253,24 +256,33 @@ render()
 
 function popularFiltros(){
 
-let catSet=new Set()
-let fornSet=new Set()
+let categorias=new Set()
+let fornecedores=new Set()
 
 produtos.forEach(p=>{
 
-catSet.add(p.categoria)
-fornSet.add(p.fornecedor)
+categorias.add(p.categoria)
+fornecedores.add(p.fornecedor)
 
 })
 
 let cat=document.getElementById("filtroCategoria")
 let forn=document.getElementById("filtroFornecedor")
 
-cat.innerHTML='<option value="">Categorias</option>'
-forn.innerHTML='<option value="">Fornecedores</option>'
+cat.innerHTML='<option value="">Todas categorias</option>'
+forn.innerHTML='<option value="">Todos fornecedores</option>'
 
-catSet.forEach(c=>cat.innerHTML+=`<option>${c}</option>`)
-fornSet.forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
+categorias.forEach(c=>{
+
+cat.innerHTML+=`<option value="${c}">${c}</option>`
+
+})
+
+fornecedores.forEach(f=>{
+
+forn.innerHTML+=`<option value="${f}">${f}</option>`
+
+})
 
 }
 
@@ -278,17 +290,30 @@ function render(){
 
 let busca=normalizar(document.getElementById("busca").value)
 
+let categoria=document.getElementById("filtroCategoria").value
+let fornecedor=document.getElementById("filtroFornecedor").value
+
 let lista=document.getElementById("lista")
 
 lista.innerHTML=""
 
 produtos
 
-.filter(p=>normalizar(p.descricao+p.codigo).includes(busca))
+.filter(p=>{
+
+let okBusca=normalizar(p.descricao+p.codigo).includes(busca)
+
+let okCategoria=!categoria || p.categoria==categoria
+
+let okFornecedor=!fornecedor || p.fornecedor==fornecedor
+
+return okBusca && okCategoria && okFornecedor
+
+})
 
 .forEach(p=>{
 
-let q=pedido[p.codigo]?.qtd||0
+let q=pedido[p.codigo]?.qtd || 0
 
 let div=document.createElement("div")
 
@@ -466,7 +491,6 @@ let totalPedido=0
 
 Object.keys(fornecedores).forEach(f=>{
 
-doc.setFontSize(10)
 doc.setFont(undefined,"bold")
 
 doc.text("Fornecedor: "+f,10,y)
@@ -474,7 +498,6 @@ doc.text("Fornecedor: "+f,10,y)
 y+=6
 
 doc.setFontSize(8)
-doc.setFont(undefined,"bold")
 
 doc.text("Código",10,y)
 doc.text("Uni",30,y)
@@ -483,7 +506,9 @@ doc.text("V.Total",65,y)
 doc.text("Descrição",90,y)
 
 y+=3
+
 doc.line(10,y,200,y)
+
 y+=4
 
 doc.setFont(undefined,"normal")
@@ -499,8 +524,10 @@ let linhas=doc.splitTextToSize(p.produto,100)
 linhas.forEach((linha,i)=>{
 
 if(y>270){
+
 doc.addPage()
 y=10
+
 }
 
 if(i===0){
@@ -528,6 +555,7 @@ doc.line(10,y,200,y)
 y+=5
 
 doc.setFont(undefined,"bold")
+
 doc.text("Subtotal "+f+": "+subtotal.toFixed(2),10,y)
 
 doc.setFont(undefined,"normal")
@@ -536,27 +564,7 @@ y+=8
 
 })
 
-doc.setFont(undefined,"bold")
-
 doc.text("TOTAL PEDIDO: "+totalPedido.toFixed(2),10,y)
-
-y+=8
-
-let obs=document.getElementById("observacao").value
-
-if(obs){
-
-doc.setFont(undefined,"normal")
-
-doc.text("Observações:",10,y)
-
-y+=5
-
-let linhas=doc.splitTextToSize(obs,180)
-
-doc.text(linhas,10,y)
-
-}
 
 doc.save("pedido_"+numeroPedido+".pdf")
 
