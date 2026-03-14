@@ -1,88 +1,178 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BS Box</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#222222">
+<title>BS Box - Conecta Varejo</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 
-body{font-family:Arial;margin:0;padding:10px;background:#f2f2f2}
-h2{margin:5px 0}
+body{
+font-family:Arial;
+margin:0;
+background:#f2f2f2;
+}
 
-.topbar{background:white;padding:10px;border-radius:10px;margin-bottom:10px}
+header{
+background:white;
+padding:10px;
+display:flex;
+align-items:center;
+gap:10px;
+border-bottom:1px solid #ddd;
+}
 
-input,select{padding:10px;font-size:16px;width:100%;margin:4px 0}
+header img{
+height:45px;
+}
 
-textarea{padding:10px;font-size:16px;width:100%;margin-top:10px}
+.container{
+display:flex;
+height:calc(100vh - 70px);
+}
 
-button{padding:10px;font-size:16px;border:none;border-radius:8px;background:#222;color:white;margin:4px 0;cursor:pointer}
+.catalogo{
+flex:2;
+overflow:auto;
+padding:10px;
+}
 
-button:hover{background:#444}
+.pedido{
+flex:1;
+background:white;
+border-left:1px solid #ddd;
+padding:10px;
+display:flex;
+flex-direction:column;
+}
 
-.card{background:white;border-radius:10px;padding:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center}
+input,select,textarea{
+padding:8px;
+font-size:14px;
+width:100%;
+margin:4px 0;
+}
 
-.prodInfo{flex:1;font-size:14px}
+button{
+padding:8px;
+border:none;
+border-radius:6px;
+background:#222;
+color:white;
+cursor:pointer;
+margin:3px 0;
+}
 
-.qty{display:flex;align-items:center;gap:6px}
+.card{
+background:white;
+border-radius:8px;
+padding:10px;
+margin:6px 0;
+display:flex;
+justify-content:space-between;
+}
 
-.qty button{width:32px;height:32px;font-size:18px}
+.qty{
+display:flex;
+gap:5px;
+}
 
-.qty input{width:50px;text-align:center;font-size:16px}
+.qty button{
+width:28px;
+height:28px;
+}
 
-#pedidoBox{background:white;padding:10px;border-radius:10px;margin-top:10px}
+.qty input{
+width:45px;
+text-align:center;
+}
 
-.total{font-size:18px;font-weight:bold;margin-top:10px}
+.total{
+font-weight:bold;
+font-size:18px;
+margin-top:10px;
+}
 
-.fornecedorBox{margin-top:10px;padding-top:5px;border-top:1px solid #ccc}
+@media(max-width:900px){
 
-.remover{color:red;font-size:12px;cursor:pointer}
+.container{
+flex-direction:column;
+}
+
+.pedido{
+position:fixed;
+bottom:0;
+left:0;
+right:0;
+height:40%;
+}
+
+.catalogo{
+padding-bottom:45%;
+}
+
+}
 
 </style>
 </head>
 
 <body>
 
-<h2>BS Box</h2>
+<header>
 
-<div class="topbar">
+<img src="logo_conecta.png">
 
-<button onclick="atualizarCatalogo()">Atualizar Catálogo</button>
-
-<input type="file" id="fileInput" accept=".xlsx"/>
-
-<input id="cliente" placeholder="Nome do cliente"/>
-
-<input id="busca" placeholder="Buscar produto..." oninput="render()"/>
-
-<select id="filtroCategoria" onchange="render()"><option value="">Todas categorias</option></select>
-
-<select id="filtroFornecedor" onchange="render()"><option value="">Todos fornecedores</option></select>
-
+<div>
+<b>Conecta Varejo</b><br>
+Presidente Prudente
 </div>
+
+</header>
+
+<div class="container">
+
+<div class="catalogo">
+
+<h2>Catálogo</h2>
+
+<input type="file" id="fileInput">
+
+<input id="cliente" placeholder="Nome do cliente">
+
+<input id="busca" placeholder="Buscar..." oninput="render()">
+
+<select id="filtroCategoria" onchange="render()">
+<option value="">Todas categorias</option>
+</select>
+
+<select id="filtroFornecedor" onchange="render()">
+<option value="">Todos fornecedores</option>
+</select>
 
 <div id="lista"></div>
 
-<div id="pedidoBox">
+</div>
 
-<h3>Pedido</h3>
+<div class="pedido">
+
+<h3 id="pedidoNumero"></h3>
 
 <div id="pedido"></div>
 
-<div class="total" id="totalPedido">Total: R$ 0</div>
+<div class="total" id="totalPedido"></div>
 
-<textarea id="observacao" placeholder="Observações do pedido (forma de pagamento, prazo, entrega, etc.)"></textarea>
+<textarea id="observacao" placeholder="Observações"></textarea>
 
-<button onclick="novoPedido()">Novo Pedido</button>
+<button onclick="novoPedido()">Novo pedido</button>
 <button onclick="gerarPDF()">Gerar PDF</button>
 <button onclick="gerarExcel()">Gerar Excel</button>
-<button onclick="enviarWhats()">Enviar WhatsApp</button>
+
+</div>
 
 </div>
 
@@ -91,43 +181,24 @@ button:hover{background:#444}
 let produtos=[]
 let pedido={}
 
+let numeroPedido=gerarNumeroPedido()
+
+document.getElementById("pedidoNumero").innerText="Pedido Nº "+numeroPedido
+
+function gerarNumeroPedido(){
+
+let d=new Date()
+
+return d.getFullYear()+
+("0"+(d.getMonth()+1)).slice(-2)+
+("0"+d.getDate()).slice(-2)+"-"+
+("0"+d.getHours()).slice(-2)+
+("0"+d.getMinutes()).slice(-2)
+
+}
+
 function normalizar(txt){
-return txt.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-}
-
-async function atualizarCatalogo(){
-
-if(!confirm("Deseja atualizar o catálogo?")) return
-
-localStorage.removeItem("bsbox_catalogo")
-produtos=[]
-render()
-
-try{
-
-const urlBase="https://raw.githubusercontent.com/PBWebdesignerPP/bsbox/main/base_de_produtos.xlsx"
-const url=urlBase+"?t="+new Date().getTime()
-
-const resp=await fetch(url,{cache:"no-store"})
-
-if(!resp.ok) throw new Error("Erro")
-
-const data=await resp.arrayBuffer()
-
-processarExcel(data)
-
-alert("Catálogo atualizado")
-
-}
-
-catch(e){
-
-alert("Erro ao atualizar catálogo")
-
-carregarCatalogoLocal()
-
-}
-
+return txt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 }
 
 document.getElementById("fileInput").addEventListener("change",function(e){
@@ -138,17 +209,7 @@ const reader=new FileReader()
 
 reader.onload=function(evt){
 
-processarExcel(evt.target.result)
-
-}
-
-reader.readAsArrayBuffer(file)
-
-})
-
-function processarExcel(data){
-
-const workbook=XLSX.read(data,{type:'array'})
+const workbook=XLSX.read(evt.target.result,{type:'array'})
 const sheet=workbook.Sheets[workbook.SheetNames[0]]
 const json=XLSX.utils.sheet_to_json(sheet,{header:1})
 
@@ -156,47 +217,28 @@ produtos=[]
 
 json.slice(1).forEach(l=>{
 
-let codigo=l[0]
-
-if(!codigo) return
+if(!l[0]) return
 
 produtos.push({
 
-codigo:String(codigo),
+codigo:String(l[0]),
 categoria:l[1],
 descricao:l[2],
 fornecedor:l[3],
-valorUnit:parseFloat(l[4])||0,
-volume:parseInt(l[6])||0
+valorUnit:parseFloat(l[4])||0
 
 })
 
 })
-
-salvarCatalogo()
-popularFiltros()
-render()
-
-}
-
-function salvarCatalogo(){
-localStorage.setItem("bsbox_catalogo",JSON.stringify(produtos))
-}
-
-function carregarCatalogoLocal(){
-
-let cat=localStorage.getItem("bsbox_catalogo")
-
-if(cat){
-
-produtos=JSON.parse(cat)
 
 popularFiltros()
 render()
 
 }
 
-}
+reader.readAsArrayBuffer(file)
+
+})
 
 function popularFiltros(){
 
@@ -204,8 +246,10 @@ let catSet=new Set()
 let fornSet=new Set()
 
 produtos.forEach(p=>{
+
 catSet.add(p.categoria)
 fornSet.add(p.fornecedor)
+
 })
 
 let cat=document.getElementById("filtroCategoria")
@@ -222,42 +266,41 @@ fornSet.forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
 function render(){
 
 let busca=normalizar(document.getElementById("busca").value)
+
 let cat=document.getElementById("filtroCategoria").value
 let forn=document.getElementById("filtroFornecedor").value
 
 let lista=document.getElementById("lista")
+
 lista.innerHTML=""
 
 produtos
 .filter(p=>{
 
-let texto=normalizar(p.descricao+" "+p.codigo+" "+p.categoria+" "+p.fornecedor)
+let txt=normalizar(p.descricao+p.codigo+p.fornecedor+p.categoria)
 
-return texto.includes(busca)
+return txt.includes(busca)
 
 })
-.filter(p=>!cat||p.categoria==cat)
-.filter(p=>!forn||p.fornecedor==forn)
-.sort((a,b)=>a.descricao.localeCompare(b.descricao))
+.filter(p=>!cat || p.categoria==cat)
+.filter(p=>!forn || p.fornecedor==forn)
 
 .forEach(p=>{
 
 let q=pedido[p.codigo]?.qtd||0
 
 let div=document.createElement("div")
+
 div.className="card"
 
 div.innerHTML=`
 
-<div class="prodInfo">
+<div>
 
 <b>${p.descricao}</b><br>
-
-Código: ${p.codigo}<br>
-Categoria: ${p.categoria}<br>
+Cod: ${p.codigo}<br>
 Fornecedor: ${p.fornecedor}<br>
-Volume caixa: ${p.volume} un<br>
-Valor unitário: R$ ${p.valorUnit.toFixed(2)}
+R$ ${p.valorUnit.toFixed(2)}
 
 </div>
 
@@ -265,7 +308,7 @@ Valor unitário: R$ ${p.valorUnit.toFixed(2)}
 
 <button onclick="menos('${p.codigo}')">-</button>
 
-<input type="number" min="0" value="${q}" onchange="setQtd('${p.codigo}',this.value)">
+<input type="number" value="${q}" onchange="setQtd('${p.codigo}',this.value)">
 
 <button onclick="mais('${p.codigo}')">+</button>
 
@@ -291,9 +334,7 @@ if(!q || q<=0){
 
 delete pedido[c]
 
-}
-
-else{
+}else{
 
 pedido[c]={
 
@@ -354,36 +395,24 @@ let p=pedido[c]
 
 let sub=p.qtd*p.valor
 
-let div=document.createElement("div")
-
-div.innerHTML=`
-${p.qtd} un - ${p.produto} - R$ ${sub.toFixed(2)}
-<span class="remover" onclick="removerItem('${c}')"> ❌ remover</span>
-`
-
-box.appendChild(div)
+box.innerHTML+=`${p.qtd}x ${p.produto} - R$ ${sub.toFixed(2)}<br>`
 
 total+=sub
 
 })
 
-document.getElementById("totalPedido").textContent="Total: R$ "+total.toFixed(2)
-
-}
-
-function removerItem(c){
-
-delete pedido[c]
-
-render()
+document.getElementById("totalPedido").innerText="Total R$ "+total.toFixed(2)
 
 }
 
 function novoPedido(){
 
-if(!confirm("Iniciar novo pedido?")) return
-
 pedido={}
+
+numeroPedido=gerarNumeroPedido()
+
+document.getElementById("pedidoNumero").innerText="Pedido Nº "+numeroPedido
+
 document.getElementById("observacao").value=""
 
 render()
@@ -396,39 +425,114 @@ const {jsPDF}=window.jspdf
 
 let doc=new jsPDF()
 
-let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
+doc.setFontSize(10)
 
-let y=20
+let y=10
 
-doc.text("BS BOX PEDIDO",20,10)
-
-doc.text("Cliente: "+cliente,20,y)
+doc.text("CONECTA VAREJO PRESIDENTE PRUDENTE",10,y)
+y+=6
+doc.text("Rua Tomizo Kawagutti - 259 Vila Industrial",10,y)
+y+=6
+doc.text("Contato: 18 9617 0377",10,y)
 
 y+=10
+
+doc.text("Pedido Nº: "+numeroPedido,10,y)
+y+=6
+doc.text("Data: "+new Date().toLocaleDateString(),10,y)
+y+=6
+
+let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
+
+doc.text("Cliente: "+cliente,10,y)
+
+y+=10
+
+let total=0
+
+let fornecedores={}
 
 Object.keys(pedido).forEach(c=>{
 
 let p=pedido[c]
 
-doc.text(`${p.qtd} un - ${p.produto}`,20,y)
+if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
 
-y+=8
+fornecedores[p.fornecedor].push({codigo:c,...p})
 
 })
 
-doc.save("pedido_bsbox.pdf")
+Object.keys(fornecedores).forEach(f=>{
+
+doc.text("Fornecedor: "+f,10,y)
+
+y+=6
+
+let subtotal=0
+
+fornecedores[f].forEach(i=>{
+
+let sub=i.qtd*i.valor
+
+let linha=`${i.codigo} ${i.produto}`
+
+let linhas=doc.splitTextToSize(linha,120)
+
+doc.text(linhas,10,y)
+
+doc.text(String(i.qtd),140,y)
+
+doc.text(i.valor.toFixed(2),155,y)
+
+doc.text(sub.toFixed(2),180,y)
+
+y+=6
+
+subtotal+=sub
+
+})
+
+doc.text("Subtotal fornecedor: "+subtotal.toFixed(2),140,y)
+
+y+=10
+
+total+=subtotal
+
+})
+
+doc.text("TOTAL DO PEDIDO: "+total.toFixed(2),140,y)
+
+y+=10
+
+let obs=document.getElementById("observacao").value
+
+if(obs){
+
+doc.text("Observações:",10,y)
+
+y+=6
+
+let linhas=doc.splitTextToSize(obs,180)
+
+doc.text(linhas,10,y)
+
+}
+
+doc.save("pedido_"+numeroPedido+".pdf")
 
 }
 
 function gerarExcel(){
 
-let rows=[["codigo","produto","qtd"]]
+let rows=[["Fornecedor","Codigo","Produto","Qtd","Unit","Subtotal"]]
 
 Object.keys(pedido).forEach(c=>{
 
 let p=pedido[c]
 
-rows.push([c,p.produto,p.qtd])
+let sub=p.qtd*p.valor
+
+rows.push([p.fornecedor,c,p.produto,p.qtd,p.valor,sub])
 
 })
 
@@ -436,24 +540,11 @@ let ws=XLSX.utils.aoa_to_sheet(rows)
 
 let wb=XLSX.utils.book_new()
 
-XLSX.utils.book_append_sheet(wb,ws,"pedido")
+XLSX.utils.book_append_sheet(wb,ws,"Pedido")
 
-XLSX.writeFile(wb,"pedido_bsbox.xlsx")
-
-}
-
-function enviarWhats(){
-
-let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
-
-let texto=`Pedido BS BOX
-Cliente: ${cliente}`
-
-window.open("https://wa.me/?text="+encodeURIComponent(texto))
+XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
 
 }
-
-carregarCatalogoLocal()
 
 </script>
 
