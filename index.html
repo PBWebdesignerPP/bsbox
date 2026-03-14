@@ -566,6 +566,24 @@ y+=8
 
 doc.text("TOTAL PEDIDO: "+totalPedido.toFixed(2),10,y)
 
+y+=10
+
+let obs=document.getElementById("observacao").value
+
+if(obs){
+
+doc.setFontSize(9)
+
+doc.text("Observações:",10,y)
+
+y+=6
+
+let linhas=doc.splitTextToSize(obs,180)
+
+doc.text(linhas,10,y)
+
+}
+
 doc.save("pedido_"+numeroPedido+".pdf")
 
 }
