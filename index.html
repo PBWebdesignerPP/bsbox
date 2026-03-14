@@ -15,7 +15,7 @@
 body{
 font-family:Arial;
 margin:0;
-background:#f2f2f2;
+background:#f3f3f3;
 }
 
 header{
@@ -51,21 +51,16 @@ display:flex;
 flex-direction:column;
 }
 
-input,select,textarea{
-padding:8px;
+.pedidoItens{
+flex:1;
+overflow:auto;
+margin-bottom:10px;
 font-size:14px;
-width:100%;
-margin:4px 0;
 }
 
-button{
-padding:8px;
-border:none;
-border-radius:6px;
-background:#222;
-color:white;
-cursor:pointer;
-margin:3px 0;
+textarea{
+width:100%;
+min-height:70px;
 }
 
 .card{
@@ -79,23 +74,34 @@ justify-content:space-between;
 
 .qty{
 display:flex;
-gap:5px;
-}
-
-.qty button{
-width:28px;
-height:28px;
+gap:4px;
 }
 
 .qty input{
-width:45px;
+width:40px;
 text-align:center;
+}
+
+button{
+padding:7px;
+border:none;
+border-radius:6px;
+background:#222;
+color:white;
+margin:3px 0;
+cursor:pointer;
+}
+
+.remover{
+color:red;
+cursor:pointer;
+margin-left:8px;
 }
 
 .total{
 font-weight:bold;
-font-size:18px;
-margin-top:10px;
+font-size:17px;
+margin-top:5px;
 }
 
 @media(max-width:900px){
@@ -109,11 +115,11 @@ position:fixed;
 bottom:0;
 left:0;
 right:0;
-height:40%;
+height:45%;
 }
 
 .catalogo{
-padding-bottom:45%;
+padding-bottom:55%;
 }
 
 }
@@ -140,18 +146,18 @@ Presidente Prudente
 
 <h2>Catálogo</h2>
 
-<input type="file" id="fileInput">
+<button onclick="carregarCatalogo()">Atualizar catálogo</button>
 
-<input id="cliente" placeholder="Nome do cliente">
+<input id="cliente" placeholder="Cliente">
 
 <input id="busca" placeholder="Buscar..." oninput="render()">
 
 <select id="filtroCategoria" onchange="render()">
-<option value="">Todas categorias</option>
+<option value="">Categorias</option>
 </select>
 
 <select id="filtroFornecedor" onchange="render()">
-<option value="">Todos fornecedores</option>
+<option value="">Fornecedores</option>
 </select>
 
 <div id="lista"></div>
@@ -162,7 +168,7 @@ Presidente Prudente
 
 <h3 id="pedidoNumero"></h3>
 
-<div id="pedido"></div>
+<div class="pedidoItens" id="pedido"></div>
 
 <div class="total" id="totalPedido"></div>
 
@@ -180,10 +186,9 @@ Presidente Prudente
 
 let produtos=[]
 let pedido={}
-
 let numeroPedido=gerarNumeroPedido()
 
-document.getElementById("pedidoNumero").innerText="Pedido Nº "+numeroPedido
+document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
 function gerarNumeroPedido(){
 
@@ -197,19 +202,27 @@ return d.getFullYear()+
 
 }
 
-function normalizar(txt){
-return txt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+function normalizar(t){
+
+return (t||"")
+.toString()
+.toLowerCase()
+.normalize("NFD")
+.replace(/[\u0300-\u036f]/g,"")
+
 }
 
-document.getElementById("fileInput").addEventListener("change",function(e){
+carregarCatalogo()
 
-const file=e.target.files[0]
+function carregarCatalogo(){
 
-const reader=new FileReader()
+fetch("base_de_produtos.xlsx?"+Date.now())
 
-reader.onload=function(evt){
+.then(r=>r.arrayBuffer())
 
-const workbook=XLSX.read(evt.target.result,{type:'array'})
+.then(data=>{
+
+const workbook=XLSX.read(data,{type:'array'})
 const sheet=workbook.Sheets[workbook.SheetNames[0]]
 const json=XLSX.utils.sheet_to_json(sheet,{header:1})
 
@@ -234,11 +247,15 @@ valorUnit:parseFloat(l[4])||0
 popularFiltros()
 render()
 
-}
+})
 
-reader.readAsArrayBuffer(file)
+.catch(()=>{
+
+alert("Não foi possível carregar base_de_produtos.xlsx")
 
 })
+
+}
 
 function popularFiltros(){
 
@@ -255,8 +272,8 @@ fornSet.add(p.fornecedor)
 let cat=document.getElementById("filtroCategoria")
 let forn=document.getElementById("filtroFornecedor")
 
-cat.innerHTML='<option value="">Todas categorias</option>'
-forn.innerHTML='<option value="">Todos fornecedores</option>'
+cat.innerHTML='<option value="">Categorias</option>'
+forn.innerHTML='<option value="">Fornecedores</option>'
 
 catSet.forEach(c=>cat.innerHTML+=`<option>${c}</option>`)
 fornSet.forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
@@ -275,6 +292,7 @@ let lista=document.getElementById("lista")
 lista.innerHTML=""
 
 produtos
+
 .filter(p=>{
 
 let txt=normalizar(p.descricao+p.codigo+p.fornecedor+p.categoria)
@@ -282,6 +300,7 @@ let txt=normalizar(p.descricao+p.codigo+p.fornecedor+p.categoria)
 return txt.includes(busca)
 
 })
+
 .filter(p=>!cat || p.categoria==cat)
 .filter(p=>!forn || p.fornecedor==forn)
 
@@ -381,6 +400,14 @@ render()
 
 }
 
+function removerItem(c){
+
+delete pedido[c]
+
+render()
+
+}
+
 function renderPedido(){
 
 let box=document.getElementById("pedido")
@@ -395,7 +422,8 @@ let p=pedido[c]
 
 let sub=p.qtd*p.valor
 
-box.innerHTML+=`${p.qtd}x ${p.produto} - R$ ${sub.toFixed(2)}<br>`
+box.innerHTML+=`${p.qtd}x ${p.produto} - R$ ${sub.toFixed(2)}
+<span class="remover" onclick="removerItem('${c}')">❌</span><br>`
 
 total+=sub
 
@@ -411,7 +439,7 @@ pedido={}
 
 numeroPedido=gerarNumeroPedido()
 
-document.getElementById("pedidoNumero").innerText="Pedido Nº "+numeroPedido
+document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
 document.getElementById("observacao").value=""
 
@@ -425,84 +453,70 @@ const {jsPDF}=window.jspdf
 
 let doc=new jsPDF()
 
-doc.setFontSize(10)
+doc.setFontSize(9)
 
 let y=10
 
-doc.text("CONECTA VAREJO PRESIDENTE PRUDENTE",10,y)
+doc.text("CONECTA VAREJO",10,y)
+
 y+=6
-doc.text("Rua Tomizo Kawagutti - 259 Vila Industrial",10,y)
+
+doc.text("Pedido "+numeroPedido,10,y)
+
 y+=6
-doc.text("Contato: 18 9617 0377",10,y)
+
+doc.text("Cliente: "+(document.getElementById("cliente").value||""),10,y)
 
 y+=10
 
-doc.text("Pedido Nº: "+numeroPedido,10,y)
-y+=6
-doc.text("Data: "+new Date().toLocaleDateString(),10,y)
-y+=6
+let porFornecedor={}
 
-let cliente=document.getElementById("cliente").value||"SEM CLIENTE"
+Object.values(pedido).forEach(p=>{
 
-doc.text("Cliente: "+cliente,10,y)
+if(!porFornecedor[p.fornecedor]) porFornecedor[p.fornecedor]=[]
 
-y+=10
-
-let total=0
-
-let fornecedores={}
-
-Object.keys(pedido).forEach(c=>{
-
-let p=pedido[c]
-
-if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
-
-fornecedores[p.fornecedor].push({codigo:c,...p})
+porFornecedor[p.fornecedor].push(p)
 
 })
 
-Object.keys(fornecedores).forEach(f=>{
+let totalPedido=0
+
+Object.keys(porFornecedor).forEach(f=>{
 
 doc.text("Fornecedor: "+f,10,y)
 
-y+=6
+y+=5
 
 let subtotal=0
 
-fornecedores[f].forEach(i=>{
+porFornecedor[f].forEach(p=>{
 
-let sub=i.qtd*i.valor
+let sub=p.qtd*p.valor
 
-let linha=`${i.codigo} ${i.produto}`
+let linha=`${p.qtd}x ${p.produto}  ${p.valor.toFixed(2)}  ${sub.toFixed(2)}`
 
-let linhas=doc.splitTextToSize(linha,120)
+let linhas=doc.splitTextToSize(linha,180)
 
 doc.text(linhas,10,y)
 
-doc.text(String(i.qtd),140,y)
+y+=linhas.length*4
 
-doc.text(i.valor.toFixed(2),155,y)
+subtotal+=sub
+totalPedido+=sub
 
-doc.text(sub.toFixed(2),180,y)
+})
+
+doc.text("Subtotal "+f+": "+subtotal.toFixed(2),10,y)
 
 y+=6
 
-subtotal+=sub
-
 })
 
-doc.text("Subtotal fornecedor: "+subtotal.toFixed(2),140,y)
+y+=5
 
-y+=10
+doc.text("TOTAL PEDIDO: "+totalPedido.toFixed(2),10,y)
 
-total+=subtotal
-
-})
-
-doc.text("TOTAL DO PEDIDO: "+total.toFixed(2),140,y)
-
-y+=10
+y+=8
 
 let obs=document.getElementById("observacao").value
 
@@ -510,7 +524,7 @@ if(obs){
 
 doc.text("Observações:",10,y)
 
-y+=6
+y+=5
 
 let linhas=doc.splitTextToSize(obs,180)
 
@@ -524,7 +538,7 @@ doc.save("pedido_"+numeroPedido+".pdf")
 
 function gerarExcel(){
 
-let rows=[["Fornecedor","Codigo","Produto","Qtd","Unit","Subtotal"]]
+let rows=[["Fornecedor","Codigo","Produto","Quantidade","Unit","Subtotal"]]
 
 Object.keys(pedido).forEach(c=>{
 
