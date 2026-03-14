@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
 
 <meta charset="UTF-8">
@@ -15,7 +16,7 @@
 body{
 font-family:Arial;
 margin:0;
-background:#f3f3f3;
+background:#f2f2f2;
 }
 
 header{
@@ -54,13 +55,13 @@ flex-direction:column;
 .pedidoItens{
 flex:1;
 overflow:auto;
-margin-bottom:10px;
 font-size:14px;
 }
 
 textarea{
 width:100%;
 min-height:70px;
+margin-top:5px;
 }
 
 .card{
@@ -74,7 +75,7 @@ justify-content:space-between;
 
 .qty{
 display:flex;
-gap:4px;
+gap:5px;
 }
 
 .qty input{
@@ -125,6 +126,7 @@ padding-bottom:55%;
 }
 
 </style>
+
 </head>
 
 <body>
@@ -186,6 +188,7 @@ Presidente Prudente
 
 let produtos=[]
 let pedido={}
+
 let numeroPedido=gerarNumeroPedido()
 
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
@@ -357,6 +360,7 @@ delete pedido[c]
 
 pedido[c]={
 
+codigo:c,
 produto:prod.descricao,
 qtd:q,
 valor:prod.valorUnit,
@@ -376,7 +380,7 @@ let prod=produtos.find(p=>p.codigo==c)
 
 if(!pedido[c]){
 
-pedido[c]={produto:prod.descricao,qtd:1,valor:prod.valorUnit,fornecedor:prod.fornecedor}
+pedido[c]={codigo:c,produto:prod.descricao,qtd:1,valor:prod.valorUnit,fornecedor:prod.fornecedor}
 
 }else{
 
@@ -453,43 +457,45 @@ const {jsPDF}=window.jspdf
 
 let doc=new jsPDF()
 
-doc.setFontSize(9)
-
 let y=10
 
+doc.setFontSize(10)
+
 doc.text("CONECTA VAREJO",10,y)
-y+=5
+y+=6
 doc.text("Pedido "+numeroPedido,10,y)
-y+=5
+y+=6
 
 let cliente=document.getElementById("cliente").value||""
 
 doc.text("Cliente: "+cliente,10,y)
 
-y+=8
+y+=10
 
-let porFornecedor={}
+let fornecedores={}
 
 Object.values(pedido).forEach(p=>{
 
-if(!porFornecedor[p.fornecedor]) porFornecedor[p.fornecedor]=[]
+if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
 
-porFornecedor[p.fornecedor].push(p)
+fornecedores[p.fornecedor].push(p)
 
 })
 
 let totalPedido=0
 
-Object.keys(porFornecedor).forEach(f=>{
+Object.keys(fornecedores).forEach(f=>{
 
+doc.setFontSize(10)
 doc.setFont(undefined,"bold")
+
 doc.text("Fornecedor: "+f,10,y)
 
-y+=5
+y+=6
 
-doc.setFont(undefined,"normal")
+doc.setFontSize(8)
+doc.setFont(undefined,"bold")
 
-// CABEÇALHO COLUNAS
 doc.text("Código",10,y)
 doc.text("Uni",30,y)
 doc.text("V.Unit",45,y)
@@ -497,34 +503,32 @@ doc.text("V.Total",65,y)
 doc.text("Descrição",90,y)
 
 y+=3
-
 doc.line(10,y,200,y)
-
 y+=4
+
+doc.setFont(undefined,"normal")
 
 let subtotal=0
 
-porFornecedor[f].forEach(p=>{
+fornecedores[f].forEach(p=>{
 
-let sub=p.qtd*p.valor
+let total=p.qtd*p.valor
 
-let descricaoLinhas=doc.splitTextToSize(p.produto,100)
+let linhas=doc.splitTextToSize(p.produto,100)
 
-descricaoLinhas.forEach((linha,i)=>{
+linhas.forEach((linha,i)=>{
 
-if(y>280){
-
+if(y>270){
 doc.addPage()
 y=10
-
 }
 
 if(i===0){
 
-doc.text(String(p.codigo||""),10,y)
+doc.text(String(p.codigo),10,y)
 doc.text(String(p.qtd),30,y)
 doc.text(p.valor.toFixed(2),45,y)
-doc.text(sub.toFixed(2),65,y)
+doc.text(total.toFixed(2),65,y)
 
 }
 
@@ -534,15 +538,12 @@ y+=4
 
 })
 
-subtotal+=sub
-totalPedido+=sub
+subtotal+=total
+totalPedido+=total
 
 })
 
-y+=2
-
 doc.line(10,y,200,y)
-
 y+=5
 
 doc.setFont(undefined,"bold")
@@ -556,16 +557,17 @@ y+=8
 })
 
 doc.setFont(undefined,"bold")
+doc.setFontSize(10)
 
 doc.text("TOTAL PEDIDO: "+totalPedido.toFixed(2),10,y)
-
-doc.setFont(undefined,"normal")
 
 y+=8
 
 let obs=document.getElementById("observacao").value
 
 if(obs){
+
+doc.setFont(undefined,"normal")
 
 doc.text("Observações:",10,y)
 
@@ -578,6 +580,28 @@ doc.text(linhas,10,y)
 }
 
 doc.save("pedido_"+numeroPedido+".pdf")
+
+}
+
+function gerarExcel(){
+
+let rows=[["Fornecedor","Codigo","Produto","Quantidade","Unit","Subtotal"]]
+
+Object.values(pedido).forEach(p=>{
+
+let sub=p.qtd*p.valor
+
+rows.push([p.fornecedor,p.codigo,p.produto,p.qtd,p.valor,sub])
+
+})
+
+let ws=XLSX.utils.aoa_to_sheet(rows)
+
+let wb=XLSX.utils.book_new()
+
+XLSX.utils.book_append_sheet(wb,ws,"Pedido")
+
+XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
 
 }
 
