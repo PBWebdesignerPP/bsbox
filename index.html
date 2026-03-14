@@ -56,12 +56,12 @@ flex-direction:column;
 flex:1;
 overflow:auto;
 font-size:14px;
+margin-bottom:10px;
 }
 
 textarea{
 width:100%;
 min-height:70px;
-margin-top:5px;
 }
 
 .card{
@@ -102,7 +102,6 @@ margin-left:8px;
 .total{
 font-weight:bold;
 font-size:17px;
-margin-top:5px;
 }
 
 @media(max-width:900px){
@@ -111,16 +110,15 @@ margin-top:5px;
 flex-direction:column;
 }
 
-.pedido{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
-height:45%;
+.catalogo{
+height:55vh;
+overflow:auto;
 }
 
-.catalogo{
-padding-bottom:55%;
+.pedido{
+height:45vh;
+border-left:none;
+border-top:1px solid #ddd;
 }
 
 }
@@ -208,7 +206,6 @@ return d.getFullYear()+
 function normalizar(t){
 
 return (t||"")
-.toString()
 .toLowerCase()
 .normalize("NFD")
 .replace(/[\u0300-\u036f]/g,"")
@@ -252,12 +249,6 @@ render()
 
 })
 
-.catch(()=>{
-
-alert("Não foi possível carregar base_de_produtos.xlsx")
-
-})
-
 }
 
 function popularFiltros(){
@@ -287,25 +278,13 @@ function render(){
 
 let busca=normalizar(document.getElementById("busca").value)
 
-let cat=document.getElementById("filtroCategoria").value
-let forn=document.getElementById("filtroFornecedor").value
-
 let lista=document.getElementById("lista")
 
 lista.innerHTML=""
 
 produtos
 
-.filter(p=>{
-
-let txt=normalizar(p.descricao+p.codigo+p.fornecedor+p.categoria)
-
-return txt.includes(busca)
-
-})
-
-.filter(p=>!cat || p.categoria==cat)
-.filter(p=>!forn || p.fornecedor==forn)
+.filter(p=>normalizar(p.descricao+p.codigo).includes(busca))
 
 .forEach(p=>{
 
@@ -420,14 +399,12 @@ box.innerHTML=""
 
 let total=0
 
-Object.keys(pedido).forEach(c=>{
-
-let p=pedido[c]
+Object.values(pedido).forEach(p=>{
 
 let sub=p.qtd*p.valor
 
 box.innerHTML+=`${p.qtd}x ${p.produto} - R$ ${sub.toFixed(2)}
-<span class="remover" onclick="removerItem('${c}')">❌</span><br>`
+<span class="remover" onclick="removerItem('${p.codigo}')">❌</span><br>`
 
 total+=sub
 
@@ -462,8 +439,11 @@ let y=10
 doc.setFontSize(10)
 
 doc.text("CONECTA VAREJO",10,y)
+
 y+=6
+
 doc.text("Pedido "+numeroPedido,10,y)
+
 y+=6
 
 let cliente=document.getElementById("cliente").value||""
@@ -544,10 +524,10 @@ totalPedido+=total
 })
 
 doc.line(10,y,200,y)
+
 y+=5
 
 doc.setFont(undefined,"bold")
-
 doc.text("Subtotal "+f+": "+subtotal.toFixed(2),10,y)
 
 doc.setFont(undefined,"normal")
@@ -557,7 +537,6 @@ y+=8
 })
 
 doc.setFont(undefined,"bold")
-doc.setFontSize(10)
 
 doc.text("TOTAL PEDIDO: "+totalPedido.toFixed(2),10,y)
 
