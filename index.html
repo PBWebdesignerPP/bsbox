@@ -241,7 +241,8 @@ codigo:String(l[0]),
 categoria:l[1],
 descricao:l[2],
 fornecedor:l[3],
-valorUnit:parseFloat(l[4])||0
+valorUnit:parseFloat(l[4])||0,
+volume:l[6] || ""
 
 })
 
@@ -326,6 +327,7 @@ div.innerHTML=`
 <b>${p.descricao}</b><br>
 Cod: ${p.codigo}<br>
 Fornecedor: ${p.fornecedor}<br>
+Pedido mínimo: ${p.volume}<br>
 R$ ${p.valorUnit.toFixed(2)}
 
 </div>
@@ -408,6 +410,18 @@ render()
 
 }
 
+function alterarValor(c,v){
+
+v=parseFloat(v)
+
+if(!pedido[c]) return
+
+pedido[c].valor=v
+
+render()
+
+}
+
 function removerItem(c){
 
 delete pedido[c]
@@ -428,8 +442,19 @@ Object.values(pedido).forEach(p=>{
 
 let sub=p.qtd*p.valor
 
-box.innerHTML+=`${p.qtd}x ${p.produto} - R$ ${sub.toFixed(2)}
-<span class="remover" onclick="removerItem('${p.codigo}')">❌</span><br>`
+box.innerHTML+=`
+
+${p.qtd}x ${p.produto}<br>
+
+Valor: <input type="number" step="0.01" value="${p.valor}" onchange="alterarValor('${p.codigo}',this.value)" style="width:70px">
+
+Subtotal: R$ ${sub.toFixed(2)}
+
+<span class="remover" onclick="removerItem('${p.codigo}')">❌</span>
+
+<br><br>
+
+`
 
 total+=sub
 
@@ -450,163 +475,6 @@ document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 document.getElementById("observacao").value=""
 
 render()
-
-}
-
-function gerarPDF(){
-
-const {jsPDF}=window.jspdf
-
-let doc=new jsPDF()
-
-let y=10
-
-doc.setFontSize(10)
-
-doc.text("CONECTA VAREJO",10,y)
-
-y+=6
-
-doc.text("Pedido "+numeroPedido,10,y)
-
-y+=6
-
-let cliente=document.getElementById("cliente").value||""
-
-doc.text("Cliente: "+cliente,10,y)
-
-y+=10
-
-let fornecedores={}
-
-Object.values(pedido).forEach(p=>{
-
-if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
-
-fornecedores[p.fornecedor].push(p)
-
-})
-
-let totalPedido=0
-
-Object.keys(fornecedores).forEach(f=>{
-
-doc.setFont(undefined,"bold")
-
-doc.text("Fornecedor: "+f,10,y)
-
-y+=6
-
-doc.setFontSize(8)
-
-doc.text("Código",10,y)
-doc.text("Uni",30,y)
-doc.text("V.Unit",45,y)
-doc.text("V.Total",65,y)
-doc.text("Descrição",90,y)
-
-y+=3
-
-doc.line(10,y,200,y)
-
-y+=4
-
-doc.setFont(undefined,"normal")
-
-let subtotal=0
-
-fornecedores[f].forEach(p=>{
-
-let total=p.qtd*p.valor
-
-let linhas=doc.splitTextToSize(p.produto,100)
-
-linhas.forEach((linha,i)=>{
-
-if(y>270){
-
-doc.addPage()
-y=10
-
-}
-
-if(i===0){
-
-doc.text(String(p.codigo),10,y)
-doc.text(String(p.qtd),30,y)
-doc.text(p.valor.toFixed(2),45,y)
-doc.text(total.toFixed(2),65,y)
-
-}
-
-doc.text(linha,90,y)
-
-y+=4
-
-})
-
-subtotal+=total
-totalPedido+=total
-
-})
-
-doc.line(10,y,200,y)
-
-y+=5
-
-doc.setFont(undefined,"bold")
-
-doc.text("Subtotal "+f+": "+subtotal.toFixed(2),10,y)
-
-doc.setFont(undefined,"normal")
-
-y+=8
-
-})
-
-doc.text("TOTAL PEDIDO: "+totalPedido.toFixed(2),10,y)
-
-y+=10
-
-let obs=document.getElementById("observacao").value
-
-if(obs){
-
-doc.setFontSize(9)
-
-doc.text("Observações:",10,y)
-
-y+=6
-
-let linhas=doc.splitTextToSize(obs,180)
-
-doc.text(linhas,10,y)
-
-}
-
-doc.save("pedido_"+numeroPedido+".pdf")
-
-}
-
-function gerarExcel(){
-
-let rows=[["Fornecedor","Codigo","Produto","Quantidade","Unit","Subtotal"]]
-
-Object.values(pedido).forEach(p=>{
-
-let sub=p.qtd*p.valor
-
-rows.push([p.fornecedor,p.codigo,p.produto,p.qtd,p.valor,sub])
-
-})
-
-let ws=XLSX.utils.aoa_to_sheet(rows)
-
-let wb=XLSX.utils.book_new()
-
-XLSX.utils.book_append_sheet(wb,ws,"Pedido")
-
-XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
 
 }
 
