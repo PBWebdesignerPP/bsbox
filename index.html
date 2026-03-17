@@ -31,7 +31,6 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 .pedido{height:45vh;border-top:1px solid #ddd;}
 }
 
-/* PDF TEMPLATE */
 #pdfTemplate{width:800px;padding:20px;background:white;color:black;font-size:12px;}
 .titulo{font-weight:bold;font-size:16px;margin-bottom:10px;}
 .tabela{width:100%;border-collapse:collapse;margin-bottom:10px;}
@@ -71,7 +70,6 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 </div>
 </div>
 
-<!-- TEMPLATE PDF -->
 <div id="pdfTemplate" style="display:none"></div>
 
 <script>
@@ -99,7 +97,14 @@ const json=XLSX.utils.sheet_to_json(sheet,{header:1})
 produtos=[]
 json.slice(1).forEach(l=>{
 if(!l[0]) return
-produtos.push({codigo:String(l[0]),categoria:l[1],descricao:l[2],fornecedor:l[3],valorUnit:parseFloat(l[4])||0})
+produtos.push({
+codigo:String(l[0]),
+categoria:l[1],
+descricao:l[2],
+fornecedor:l[3],
+valorUnit:parseFloat(l[4])||0,
+pedidoMin:parseInt(l[6])||1
+})
 })
 popularFiltros();render()
 })}
@@ -134,7 +139,8 @@ div.innerHTML=`
 <div>
 <b>${p.descricao}</b><br>
 Cod: ${p.codigo}<br>
-R$ ${p.valorUnit.toFixed(2)}
+R$ ${p.valorUnit.toFixed(2)}<br>
+<small>Min: ${p.pedidoMin}</small>
 </div>
 <div class="qty">
 <input type="number" min="1" placeholder="Qtd" id="q_${p.codigo}">
@@ -148,8 +154,13 @@ renderPedido()
 function addItem(c){
 let input=document.getElementById("q_"+c)
 let q=parseInt(input.value)
-if(!q||q<=0){alert("Qtd inválida");return}
 let prod=produtos.find(p=>p.codigo==c)
+
+if(!q || q < prod.pedidoMin){
+alert("Pedido mínimo: "+prod.pedidoMin)
+return
+}
+
 pedido[c]={codigo:c,produto:prod.descricao,qtd:q,valor:prod.valorUnit,fornecedor:prod.fornecedor}
 input.value=""
 render()
@@ -172,13 +183,31 @@ let sub=0
 fornecedores[f].forEach(p=>{
 let st=p.qtd*p.valor
 sub+=st
-box.innerHTML+=`${p.codigo} - ${p.qtd}x - R$ ${st.toFixed(2)}<br>`
+box.innerHTML+=`
+${p.codigo} - ${p.qtd}x 
+<input type="number" value="${p.valor}" step="0.01" style="width:70px"
+onchange="alterarValor('${p.codigo}', this.value)">
+- R$ ${st.toFixed(2)}
+<button onclick="removerItem('${p.codigo}')">❌</button>
+<br>`
 })
 box.innerHTML+=`<b>Subtotal: R$ ${sub.toFixed(2)}</b><br><br>`
 total+=sub
 }
 
 document.getElementById("totalPedido").innerText="Total R$ "+total.toFixed(2)
+}
+
+function alterarValor(c, v){
+v=parseFloat(v)
+if(!v || v<=0) return
+pedido[c].valor=v
+renderPedido()
+}
+
+function removerItem(c){
+delete pedido[c]
+render()
 }
 
 function gerarPDF(){
@@ -249,8 +278,13 @@ XLSX.utils.book_append_sheet(wb,ws,"Pedido")
 XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
 }
 
-function novoPedido(){pedido={};numeroPedido=gerarNumeroPedido();document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido;document.getElementById("observacao").value="";render()}
-
+function novoPedido(){
+pedido={}
+numeroPedido=gerarNumeroPedido()
+document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
+document.getElementById("observacao").value=""
+render()
+}
 </script>
 </body>
 </html>
