@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +14,7 @@ header{background:white;padding:10px;display:flex;align-items:center;gap:10px;bo
 header img{height:45px;}
 .container{display:flex;height:calc(100vh - 70px);}
 .catalogo{flex:2;overflow:auto;padding:10px;}
-.pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;position:sticky;top:0;height:100%;}
+.pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;}
 .pedidoItens{flex:1;overflow:auto;font-size:14px;margin-bottom:10px;}
 textarea{width:100%;min-height:70px;}
 .card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;gap:10px;}
@@ -27,8 +26,8 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 
 @media(max-width:900px){
 .container{flex-direction:column;}
-.catalogo{height:65vh;}
-.pedido{height:35vh;border-left:none;border-top:1px solid #ddd;position:fixed;bottom:0;width:100%;z-index:10;}
+.catalogo{height:60vh;overflow:auto;}
+.pedido{height:40vh;border-top:1px solid #ddd;position:fixed;bottom:0;width:100%;z-index:10;}
 }
 </style>
 </head>
@@ -43,12 +42,16 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 <div class="catalogo">
 <h2>Catálogo</h2>
 <button onclick="carregarCatalogo()">Atualizar catálogo</button>
+
 <input id="cliente" placeholder="Cliente">
 <br><br>
+
 <input id="busca" placeholder="Buscar produto ou código" oninput="render()">
 <br><br>
+
 <select id="filtroCategoria" onchange="render()"><option value="">Todas categorias</option></select>
 <select id="filtroFornecedor" onchange="render()"><option value="">Todos fornecedores</option></select>
+
 <div id="lista"></div>
 </div>
 
@@ -59,6 +62,7 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 <textarea id="observacao" placeholder="Observações"></textarea>
 <button onclick="novoPedido()">Novo pedido</button>
 <button onclick="gerarPDF()">Gerar PDF</button>
+<button onclick="gerarExcel()">Gerar Excel</button>
 </div>
 </div>
 
@@ -123,7 +127,6 @@ div.innerHTML=`
 <b>${p.descricao}</b><br>
 Cod: ${p.codigo}<br>
 Fornecedor: ${p.fornecedor}<br>
-Pedido mínimo: ${p.volume}<br>
 R$ ${p.valorUnit.toFixed(2)}
 </div>
 <div class="qty">
@@ -138,7 +141,7 @@ renderPedido()
 function addItem(c){
 let input=document.getElementById("q_"+c)
 let q=parseInt(input.value)
-if(!q||q<=0){alert("Digite uma quantidade válida");return}
+if(!q||q<=0){alert("Digite quantidade válida");return}
 let prod=produtos.find(p=>p.codigo==c)
 pedido[c]={codigo:c,produto:prod.descricao,qtd:q,valor:prod.valorUnit,fornecedor:prod.fornecedor}
 input.value=""
@@ -149,34 +152,69 @@ function renderPedido(){
 let box=document.getElementById("pedido")
 box.innerHTML=""
 let total=0
+
+let fornecedores={}
 Object.values(pedido).forEach(p=>{
-let sub=p.qtd*p.valor
-box.innerHTML+=`${p.qtd}x ${p.produto}<br>Subtotal: R$ ${sub.toFixed(2)} <span class="remover" onclick="delete pedido['${p.codigo}'];render()">❌</span><br><br>`
-total+=sub
+if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
+fornecedores[p.fornecedor].push(p)
 })
+
+for(let f in fornecedores){
+box.innerHTML+=`<b>${f}</b><br>`
+let subTotalFornecedor=0
+fornecedores[f].forEach(p=>{
+let sub=p.qtd*p.valor
+subTotalFornecedor+=sub
+box.innerHTML+=`${p.qtd}x ${p.produto} - R$ ${sub.toFixed(2)} <span class="remover" onclick="delete pedido['${p.codigo}'];render()">❌</span><br>`
+})
+box.innerHTML+=`<b>Subtotal fornecedor: R$ ${subTotalFornecedor.toFixed(2)}</b><br><br>`
+total+=subTotalFornecedor
+}
+
 document.getElementById("totalPedido").innerText="Total R$ "+total.toFixed(2)
 }
 
-function novoPedido(){pedido={};numeroPedido=gerarNumeroPedido();document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido;document.getElementById("observacao").value="";render()}
-
 function gerarPDF(){
-try{
 const { jsPDF } = window.jspdf
 let doc=new jsPDF()
 let y=10
 
-doc.text("Pedido "+numeroPedido,10,y);y+=10
+doc.text("Pedido: "+numeroPedido,10,y);y+=10
 
+doc.text("Cliente: "+document.getElementById("cliente").value,10,y);y+=10
+
+let fornecedores={}
 Object.values(pedido).forEach(p=>{
-doc.text(`${p.qtd}x ${p.produto} - R$ ${(p.qtd*p.valor).toFixed(2)}`,10,y)
-y+=7
+if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
+fornecedores[p.fornecedor].push(p)
 })
 
-doc.text("Total: "+document.getElementById("totalPedido").innerText,10,y+5)
+for(let f in fornecedores){
+doc.text("Fornecedor: "+f,10,y);y+=7
+let sub=0
+fornecedores[f].forEach(p=>{
+let linha=`${p.qtd}x ${p.produto} - R$ ${(p.qtd*p.valor).toFixed(2)}`
+doc.text(linha,10,y);y+=6
+sub+=p.qtd*p.valor
+})
+doc.text("Subtotal: R$ "+sub.toFixed(2),10,y);y+=10
+}
 
 doc.save("pedido_"+numeroPedido+".pdf")
-}catch(e){alert("Erro ao gerar PDF");console.error(e)}
 }
+
+function gerarExcel(){
+let dados=[["Fornecedor","Produto","Qtd","Valor","Subtotal"]]
+Object.values(pedido).forEach(p=>{
+dados.push([p.fornecedor,p.produto,p.qtd,p.valor,p.qtd*p.valor])
+})
+let ws=XLSX.utils.aoa_to_sheet(dados)
+let wb=XLSX.utils.book_new()
+XLSX.utils.book_append_sheet(wb,ws,"Pedido")
+XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
+}
+
+function novoPedido(){pedido={};numeroPedido=gerarNumeroPedido();document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido;document.getElementById("observacao").value="";render()}
 
 </script>
 </body>
