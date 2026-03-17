@@ -2,483 +2,182 @@
 <html lang="pt-br">
 
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>BS Box - Conecta Varejo</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-
-body{
-font-family:Arial;
-margin:0;
-background:#f2f2f2;
-}
-
-header{
-background:white;
-padding:10px;
-display:flex;
-align-items:center;
-gap:10px;
-border-bottom:1px solid #ddd;
-}
-
-header img{
-height:45px;
-}
-
-.container{
-display:flex;
-height:calc(100vh - 70px);
-}
-
-.catalogo{
-flex:2;
-overflow:auto;
-padding:10px;
-}
-
-.pedido{
-flex:1;
-background:white;
-border-left:1px solid #ddd;
-padding:10px;
-display:flex;
-flex-direction:column;
-}
-
-.pedidoItens{
-flex:1;
-overflow:auto;
-font-size:14px;
-margin-bottom:10px;
-}
-
-textarea{
-width:100%;
-min-height:70px;
-}
-
-.card{
-background:white;
-border-radius:8px;
-padding:10px;
-margin:6px 0;
-display:flex;
-justify-content:space-between;
-}
-
-.qty{
-display:flex;
-gap:5px;
-}
-
-.qty input{
-width:45px;
-text-align:center;
-}
-
-button{
-padding:7px;
-border:none;
-border-radius:6px;
-background:#222;
-color:white;
-margin:3px 0;
-cursor:pointer;
-}
-
-.remover{
-color:red;
-cursor:pointer;
-margin-left:8px;
-}
-
-.total{
-font-weight:bold;
-font-size:17px;
-}
+body{font-family:Arial;margin:0;background:#f2f2f2;}
+header{background:white;padding:10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ddd;}
+header img{height:45px;}
+.container{display:flex;height:calc(100vh - 70px);}
+.catalogo{flex:2;overflow:auto;padding:10px;}
+.pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;position:sticky;top:0;height:100%;}
+.pedidoItens{flex:1;overflow:auto;font-size:14px;margin-bottom:10px;}
+textarea{width:100%;min-height:70px;}
+.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;gap:10px;}
+.qty{display:flex;flex-direction:column;gap:5px;}
+.qty input{width:60px;text-align:center;}
+button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px 0;cursor:pointer;}
+.remover{color:red;cursor:pointer;margin-left:8px;}
+.total{font-weight:bold;font-size:17px;}
 
 @media(max-width:900px){
-
-.container{
-flex-direction:column;
+.container{flex-direction:column;}
+.catalogo{height:65vh;}
+.pedido{height:35vh;border-left:none;border-top:1px solid #ddd;position:fixed;bottom:0;width:100%;z-index:10;}
 }
-
-.catalogo{
-height:55vh;
-}
-
-.pedido{
-height:45vh;
-border-left:none;
-border-top:1px solid #ddd;
-}
-
-}
-
 </style>
-
 </head>
 
 <body>
-
 <header>
-
 <img src="logo_conecta.png">
-
-<div>
-<b>Conecta Varejo</b><br>
-Sistema de Pedidos
-</div>
-
+<div><b>Conecta Varejo</b><br>Sistema de Pedidos</div>
 </header>
 
 <div class="container">
-
 <div class="catalogo">
-
 <h2>Catálogo</h2>
-
 <button onclick="carregarCatalogo()">Atualizar catálogo</button>
-
 <input id="cliente" placeholder="Cliente">
-
 <br><br>
-
 <input id="busca" placeholder="Buscar produto ou código" oninput="render()">
-
 <br><br>
-
-<select id="filtroCategoria" onchange="render()">
-<option value="">Todas categorias</option>
-</select>
-
-<select id="filtroFornecedor" onchange="render()">
-<option value="">Todos fornecedores</option>
-</select>
-
+<select id="filtroCategoria" onchange="render()"><option value="">Todas categorias</option></select>
+<select id="filtroFornecedor" onchange="render()"><option value="">Todos fornecedores</option></select>
 <div id="lista"></div>
-
 </div>
 
 <div class="pedido">
-
 <h3 id="pedidoNumero"></h3>
-
 <div class="pedidoItens" id="pedido"></div>
-
 <div class="total" id="totalPedido"></div>
-
 <textarea id="observacao" placeholder="Observações"></textarea>
-
 <button onclick="novoPedido()">Novo pedido</button>
 <button onclick="gerarPDF()">Gerar PDF</button>
-<button onclick="gerarExcel()">Gerar Excel</button>
-
 </div>
-
 </div>
 
 <script>
-
 let produtos=[]
 let pedido={}
-
 let numeroPedido=gerarNumeroPedido()
-
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
 function gerarNumeroPedido(){
-
 let d=new Date()
-
-return d.getFullYear()+
-("0"+(d.getMonth()+1)).slice(-2)+
-("0"+d.getDate()).slice(-2)+"-"+
-("0"+d.getHours()).slice(-2)+
-("0"+d.getMinutes()).slice(-2)
-
+return d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2)+"-"+("0"+d.getHours()).slice(-2)+("0"+d.getMinutes()).slice(-2)
 }
 
-function normalizar(t){
-
-return (t||"")
-.toLowerCase()
-.normalize("NFD")
-.replace(/[\u0300-\u036f]/g,"")
-
-}
+function normalizar(t){return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 
 carregarCatalogo()
 
 function carregarCatalogo(){
-
 fetch("base_de_produtos.xlsx?"+Date.now())
-
 .then(r=>r.arrayBuffer())
-
 .then(data=>{
-
 const workbook=XLSX.read(data,{type:'array'})
 const sheet=workbook.Sheets[workbook.SheetNames[0]]
 const json=XLSX.utils.sheet_to_json(sheet,{header:1})
-
 produtos=[]
-
 json.slice(1).forEach(l=>{
-
 if(!l[0]) return
-
-produtos.push({
-
-codigo:String(l[0]),
-categoria:l[1],
-descricao:l[2],
-fornecedor:l[3],
-valorUnit:parseFloat(l[4])||0,
-volume:l[6] || ""
-
+produtos.push({codigo:String(l[0]),categoria:l[1],descricao:l[2],fornecedor:l[3],valorUnit:parseFloat(l[4])||0,volume:l[6]||""})
 })
-
-})
-
-popularFiltros()
-render()
-
-})
-
-}
+popularFiltros();render()
+})}
 
 function popularFiltros(){
-
-let categorias=new Set()
-let fornecedores=new Set()
-
-produtos.forEach(p=>{
-
-categorias.add(p.categoria)
-fornecedores.add(p.fornecedor)
-
-})
-
+let categorias=new Set();let fornecedores=new Set()
+produtos.forEach(p=>{categorias.add(p.categoria);fornecedores.add(p.fornecedor)})
 let cat=document.getElementById("filtroCategoria")
 let forn=document.getElementById("filtroFornecedor")
-
 cat.innerHTML='<option value="">Todas categorias</option>'
 forn.innerHTML='<option value="">Todos fornecedores</option>'
-
-categorias.forEach(c=>{
-
-cat.innerHTML+=`<option value="${c}">${c}</option>`
-
-})
-
-fornecedores.forEach(f=>{
-
-forn.innerHTML+=`<option value="${f}">${f}</option>`
-
-})
-
+categorias.forEach(c=>{cat.innerHTML+=`<option value="${c}">${c}</option>`})
+fornecedores.forEach(f=>{forn.innerHTML+=`<option value="${f}">${f}</option>`})
 }
 
 function render(){
-
 let busca=normalizar(document.getElementById("busca").value)
-
 let categoria=document.getElementById("filtroCategoria").value
 let fornecedor=document.getElementById("filtroFornecedor").value
-
 let lista=document.getElementById("lista")
-
 lista.innerHTML=""
 
-produtos
-
-.filter(p=>{
-
+produtos.filter(p=>{
 let okBusca=normalizar(p.descricao+p.codigo).includes(busca)
-
-let okCategoria=!categoria || p.categoria==categoria
-
-let okFornecedor=!fornecedor || p.fornecedor==fornecedor
-
-return okBusca && okCategoria && okFornecedor
-
-})
-
-.forEach(p=>{
-
-let q=pedido[p.codigo]?.qtd || 0
-
+let okCategoria=!categoria||p.categoria==categoria
+let okFornecedor=!fornecedor||p.fornecedor==fornecedor
+return okBusca&&okCategoria&&okFornecedor
+}).forEach(p=>{
 let div=document.createElement("div")
-
 div.className="card"
-
 div.innerHTML=`
-
 <div>
-
 <b>${p.descricao}</b><br>
 Cod: ${p.codigo}<br>
 Fornecedor: ${p.fornecedor}<br>
 Pedido mínimo: ${p.volume}<br>
 R$ ${p.valorUnit.toFixed(2)}
-
 </div>
-
 <div class="qty">
-
-<button onclick="menos('${p.codigo}')">-</button>
-
-<input type="number" value="${q}" onchange="setQtd('${p.codigo}',this.value)">
-
-<button onclick="mais('${p.codigo}')">+</button>
-
-</div>
-
-`
-
+<input type="number" min="1" placeholder="Qtd" id="q_${p.codigo}">
+<button onclick="addItem('${p.codigo}')">Adicionar</button>
+</div>`
 lista.appendChild(div)
-
 })
-
 renderPedido()
-
 }
 
-function setQtd(c,q){
-
-q=parseInt(q)
-
+function addItem(c){
+let input=document.getElementById("q_"+c)
+let q=parseInt(input.value)
+if(!q||q<=0){alert("Digite uma quantidade válida");return}
 let prod=produtos.find(p=>p.codigo==c)
-
-if(!q || q<=0){
-
-delete pedido[c]
-
-}else{
-
-pedido[c]={
-
-codigo:c,
-produto:prod.descricao,
-qtd:q,
-valor:prod.valorUnit,
-fornecedor:prod.fornecedor
-
-}
-
-}
-
+pedido[c]={codigo:c,produto:prod.descricao,qtd:q,valor:prod.valorUnit,fornecedor:prod.fornecedor}
+input.value=""
 render()
-
-}
-
-function mais(c){
-
-let prod=produtos.find(p=>p.codigo==c)
-
-if(!pedido[c]){
-
-pedido[c]={codigo:c,produto:prod.descricao,qtd:1,valor:prod.valorUnit,fornecedor:prod.fornecedor}
-
-}else{
-
-pedido[c].qtd++
-
-}
-
-render()
-
-}
-
-function menos(c){
-
-if(!pedido[c]) return
-
-pedido[c].qtd--
-
-if(pedido[c].qtd<=0) delete pedido[c]
-
-render()
-
-}
-
-function alterarValor(c,v){
-
-v=parseFloat(v)
-
-if(!pedido[c]) return
-
-pedido[c].valor=v
-
-render()
-
-}
-
-function removerItem(c){
-
-delete pedido[c]
-
-render()
-
 }
 
 function renderPedido(){
-
 let box=document.getElementById("pedido")
-
 box.innerHTML=""
-
 let total=0
-
 Object.values(pedido).forEach(p=>{
-
 let sub=p.qtd*p.valor
-
-box.innerHTML+=`
-
-${p.qtd}x ${p.produto}<br>
-
-Valor: <input type="number" step="0.01" value="${p.valor}" onchange="alterarValor('${p.codigo}',this.value)" style="width:70px">
-
-Subtotal: R$ ${sub.toFixed(2)}
-
-<span class="remover" onclick="removerItem('${p.codigo}')">❌</span>
-
-<br><br>
-
-`
-
+box.innerHTML+=`${p.qtd}x ${p.produto}<br>Subtotal: R$ ${sub.toFixed(2)} <span class="remover" onclick="delete pedido['${p.codigo}'];render()">❌</span><br><br>`
 total+=sub
-
 })
-
 document.getElementById("totalPedido").innerText="Total R$ "+total.toFixed(2)
-
 }
 
-function novoPedido(){
+function novoPedido(){pedido={};numeroPedido=gerarNumeroPedido();document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido;document.getElementById("observacao").value="";render()}
 
-pedido={}
+function gerarPDF(){
+try{
+const { jsPDF } = window.jspdf
+let doc=new jsPDF()
+let y=10
 
-numeroPedido=gerarNumeroPedido()
+doc.text("Pedido "+numeroPedido,10,y);y+=10
 
-document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
+Object.values(pedido).forEach(p=>{
+doc.text(`${p.qtd}x ${p.produto} - R$ ${(p.qtd*p.valor).toFixed(2)}`,10,y)
+y+=7
+})
 
-document.getElementById("observacao").value=""
+doc.text("Total: "+document.getElementById("totalPedido").innerText,10,y+5)
 
-render()
-
+doc.save("pedido_"+numeroPedido+".pdf")
+}catch(e){alert("Erro ao gerar PDF");console.error(e)}
 }
 
 </script>
-
 </body>
 </html>
