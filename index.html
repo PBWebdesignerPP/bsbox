@@ -17,18 +17,11 @@ header img{height:45px;}
 .pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;}
 .pedidoItens{flex:1;overflow:auto;font-size:14px;margin-bottom:10px;}
 textarea{width:100%;min-height:60px;}
-.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;gap:10px;}
-.qty{display:flex;flex-direction:column;gap:5px;}
+.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;}
 .qty input{width:60px;text-align:center;}
 button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;flex:1;}
 .botoes{display:flex;gap:5px;}
 .total{font-weight:bold;font-size:17px;}
-
-@media(max-width:900px){
-.container{flex-direction:column;}
-.catalogo{height:55vh;}
-.pedido{height:45vh;border-top:1px solid #ddd;}
-}
 </style>
 </head>
 
@@ -128,18 +121,11 @@ fornecedores.forEach(f=>forn.innerHTML+=`<option value="${f}">${f}</option>`)
 
 function render(){
 let busca=normalizar(document.getElementById("busca").value)
-let categoria=document.getElementById("filtroCategoria").value
-let fornecedor=document.getElementById("filtroFornecedor").value
 let lista=document.getElementById("lista")
-
 lista.innerHTML=""
 
-produtos.filter(p=>{
-let okBusca=normalizar(p.descricao+p.codigo).includes(busca)
-let okCat=!categoria||p.categoria==categoria
-let okFor=!fornecedor||p.fornecedor==fornecedor
-return okBusca&&okCat&&okFor
-}).forEach(p=>{
+produtos.filter(p=>normalizar(p.descricao+p.codigo).includes(busca))
+.forEach(p=>{
 let div=document.createElement("div")
 div.className="card"
 
@@ -147,16 +133,13 @@ div.innerHTML=`
 <div>
 <b>${p.descricao}</b><br>
 Cod: ${p.codigo}<br>
-R$ ${p.valorUnit.toFixed(2)}<br>
-<small>Min: ${p.pedidoMin}</small>
+R$ ${p.valorUnit.toFixed(2)}
 </div>
-
 <div class="qty">
 <input type="number" min="1" placeholder="Qtd" id="q_${p.codigo}">
 <button onclick="addItem('${p.codigo}')">Add</button>
 </div>
 `
-
 lista.appendChild(div)
 })
 
@@ -164,8 +147,7 @@ renderPedido()
 }
 
 function addItem(c){
-let input=document.getElementById("q_"+c)
-let q=parseInt(input.value)
+let q=parseInt(document.getElementById("q_"+c).value)
 let prod=produtos.find(p=>p.codigo==c)
 
 if(!q || q < prod.pedidoMin){
@@ -173,15 +155,7 @@ alert("Pedido mínimo: "+prod.pedidoMin)
 return
 }
 
-pedido[c]={
-codigo:c,
-produto:prod.descricao,
-qtd:q,
-valor:prod.valorUnit,
-fornecedor:prod.fornecedor
-}
-
-input.value=""
+pedido[c]={...prod,qtd:q,valor:prod.valorUnit}
 render()
 }
 
@@ -189,42 +163,16 @@ function renderPedido(){
 let box=document.getElementById("pedido")
 box.innerHTML=""
 let total=0
-let fornecedores={}
 
 Object.values(pedido).forEach(p=>{
-if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
-fornecedores[p.fornecedor].push(p)
-})
-
-for(let f in fornecedores){
-box.innerHTML+=`<b>${f}</b><br>`
-let sub=0
-
-fornecedores[f].forEach(p=>{
 let st=p.qtd*p.valor
-sub+=st
+total+=st
 
-box.innerHTML+=`
-${p.codigo} - ${p.qtd}x 
-<input type="number" value="${p.valor}" step="0.01" style="width:70px"
-onchange="alterarValor('${p.codigo}', this.value)">
-- R$ ${st.toFixed(2)}
-<button onclick="removerItem('${p.codigo}')">❌</button>
-<br>`
+box.innerHTML+=`${p.codigo} - ${p.qtd}x - R$ ${st.toFixed(2)}
+<button onclick="removerItem('${p.codigo}')">❌</button><br>`
 })
-
-box.innerHTML+=`<b>Subtotal: R$ ${sub.toFixed(2)}</b><br><br>`
-total+=sub
-}
 
 document.getElementById("totalPedido").innerText="Total R$ "+total.toFixed(2)
-}
-
-function alterarValor(c,v){
-v=parseFloat(v)
-if(!v || v<=0) return
-pedido[c].valor=v
-renderPedido()
 }
 
 function removerItem(c){
@@ -234,68 +182,70 @@ render()
 
 function gerarPDF(){
 const { jsPDF } = window.jspdf
-let pdf=new jsPDF("p","mm","a4")
+let pdf=new jsPDF()
 
 let cliente=document.getElementById("cliente").value
 let obs=document.getElementById("observacao").value
-let totalGeral=document.getElementById("totalPedido").innerText.replace("Total R$ ","")
 let data=new Date().toLocaleDateString('pt-BR')
 
-let y=10
+let y=15
+
+// LOGO
+let img=new Image()
+img.src="logo_conecta.png"
+
+img.onload=function(){
+
+pdf.addImage(img,"PNG",10,10,30,15)
 
 pdf.setFontSize(14)
-pdf.text("CONECTA VAREJO",10,y)
-y+=6
+pdf.text("CONECTA VAREJO",45,15)
 
 pdf.setFontSize(10)
-pdf.text(`Pedido: ${numeroPedido}`,10,y)
-y+=5
-pdf.text(`Data: ${data}`,10,y)
-y+=5
-pdf.text(`Cliente: ${cliente}`,10,y)
-y+=8
+pdf.text(`Pedido: ${numeroPedido}`,45,22)
+pdf.text(`Data: ${data}`,45,27)
+pdf.text(`Cliente: ${cliente}`,45,32)
 
-let fornecedores={}
+y=40
+
+// CABEÇALHO DAS COLUNAS
+pdf.setFontSize(10)
+pdf.text("Código",10,y)
+pdf.text("Qtd",35,y)
+pdf.text("V.Unit",55,y)
+pdf.text("Total",80,y)
+pdf.text("Descrição",110,y)
+
+y+=5
+
 Object.values(pedido).forEach(p=>{
-if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
-fornecedores[p.fornecedor].push(p)
-})
-
-for(let f in fornecedores){
-
-pdf.setFontSize(11)
-pdf.text(f,10,y)
-y+=5
-
-pdf.setFontSize(9)
-
-let sub=0
-
-fornecedores[f].forEach(p=>{
 let totalItem=p.qtd*p.valor
-sub+=totalItem
 
-let linha = `${p.codigo}    ${p.qtd}    ${p.valor.toFixed(2)}    ${totalItem.toFixed(2)}    ${p.produto}`
+pdf.text(String(p.codigo),10,y)
+pdf.text(String(p.qtd),35,y)
+pdf.text(p.valor.toFixed(2),55,y)
+pdf.text(totalItem.toFixed(2),80,y)
 
-let linhas=pdf.splitTextToSize(linha,180)
-pdf.text(linhas,10,y)
-y+=linhas.length*4
+let desc=pdf.splitTextToSize(p.descricao,80)
+pdf.text(desc,110,y)
+
+y+=desc.length*5
 
 if(y>270){
 pdf.addPage()
-y=10
+y=20
 }
 })
 
-pdf.text(`Subtotal: ${sub.toFixed(2)}`,10,y)
-y+=8
-}
+// TOTAL
+y+=5
+let totalGeral=document.getElementById("totalPedido").innerText
+pdf.setFontSize(12)
+pdf.text(totalGeral,10,y)
 
-pdf.setFontSize(11)
-pdf.text(`TOTAL: ${totalGeral}`,10,y)
-y+=8
-
+// OBSERVAÇÃO
 if(obs){
+y+=10
 pdf.setFontSize(10)
 pdf.text("Observações:",10,y)
 y+=5
@@ -306,18 +256,17 @@ pdf.text(obsFormatado,10,y)
 
 pdf.save("pedido_"+numeroPedido+".pdf")
 }
+}
 
 function gerarExcel(){
-let dados=[["Fornecedor","Codigo","Produto","Qtd","Valor","Subtotal"]]
-
+let dados=[["Codigo","Produto","Qtd","Valor","Subtotal"]]
 Object.values(pedido).forEach(p=>{
-dados.push([p.fornecedor,p.codigo,p.produto,p.qtd,p.valor,p.qtd*p.valor])
+dados.push([p.codigo,p.descricao,p.qtd,p.valor,p.qtd*p.valor])
 })
-
 let ws=XLSX.utils.aoa_to_sheet(dados)
 let wb=XLSX.utils.book_new()
 XLSX.utils.book_append_sheet(wb,ws,"Pedido")
-XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
+XLSX.writeFile(wb,"pedido.xlsx")
 }
 
 function novoPedido(){
