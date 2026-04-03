@@ -211,9 +211,9 @@ render()
 }
 
 function gerarPDF(){
+function gerarPDF(){
 let cliente=document.getElementById("cliente").value
 let obs=document.getElementById("observacao").value
-let totalGeral=document.getElementById("totalPedido").innerText.replace("Total R$ ","")
 
 let fornecedores={}
 Object.values(pedido).forEach(p=>{
@@ -221,18 +221,21 @@ if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
 fornecedores[p.fornecedor].push(p)
 })
 
+for(let f in fornecedores){
+
 let html=`<div class='titulo'>CONECTA VAREJO</div>`
 html+=`Pedido ${numeroPedido}<br>Cliente: ${cliente}<br><br>`
 
-for(let f in fornecedores){
 html+=`<b>Fornecedor: ${f}</b>`
 html+=`<table class='tabela'>
 <tr><th>Código</th><th>Qtd</th><th>V.Unit</th><th>V.Total</th><th>Descrição</th></tr>`
 
 let sub=0
+
 fornecedores[f].forEach(p=>{
 let totalItem=p.qtd*p.valor
 sub+=totalItem
+
 html+=`<tr>
 <td>${p.codigo}</td>
 <td>${p.qtd}</td>
@@ -242,10 +245,8 @@ html+=`<tr>
 </tr>`
 })
 
-html+=`</table><b>Subtotal ${f}: ${sub.toFixed(2)}</b><br><br>`
-}
-
-html+=`<b>TOTAL PEDIDO: ${totalGeral}</b><br><br>`
+html+=`</table>`
+html+=`<b>Subtotal: ${sub.toFixed(2)}</b><br><br>`
 
 if(obs){
 html+=`<b>Observações:</b><br>${obs}`
@@ -258,15 +259,21 @@ container.style.display="block"
 html2canvas(container).then(canvas=>{
 const imgData=canvas.toDataURL("image/png")
 const { jsPDF } = window.jspdf
+
 let pdf=new jsPDF("p","mm","a4")
 let imgWidth=210
 let imgHeight=(canvas.height*imgWidth)/canvas.width
+
 pdf.addImage(imgData,'PNG',0,0,imgWidth,imgHeight)
-pdf.save("pedido_"+numeroPedido+".pdf")
+
+// 🔥 Nome do arquivo com fornecedor
+let nomeFornecedor = f.replace(/\s+/g, "_")
+pdf.save(nomeFornecedor+"_pedido_"+numeroPedido+".pdf")
+
 container.style.display="none"
 })
 }
-
+}
 function gerarExcel(){
 let dados=[["Fornecedor","Codigo","Produto","Qtd","Valor","Subtotal"]]
 Object.values(pedido).forEach(p=>{
