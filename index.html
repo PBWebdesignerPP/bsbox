@@ -210,7 +210,7 @@ delete pedido[c]
 render()
 }
 
-function gerarPDF(){
+/* 🔥 NOVA FUNÇÃO PDF POR FORNECEDOR */
 function gerarPDF(){
 let cliente=document.getElementById("cliente").value
 let obs=document.getElementById("observacao").value
@@ -266,7 +266,7 @@ let imgHeight=(canvas.height*imgWidth)/canvas.width
 
 pdf.addImage(imgData,'PNG',0,0,imgWidth,imgHeight)
 
-// 🔥 Nome do arquivo com fornecedor
+// nome com fornecedor
 let nomeFornecedor = f.replace(/\s+/g, "_")
 pdf.save(nomeFornecedor+"_pedido_"+numeroPedido+".pdf")
 
@@ -274,6 +274,7 @@ container.style.display="none"
 })
 }
 }
+
 function gerarExcel(){
 let dados=[["Fornecedor","Codigo","Produto","Qtd","Valor","Subtotal"]]
 Object.values(pedido).forEach(p=>{
