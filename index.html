@@ -1,18 +1,6 @@
 <script>
 
 /* =========================
-   🔥 FIREBASE INIT (PRIMEIRO!)
-========================= */
-const firebaseConfig = {
-apiKey: "AIzaSy...",
-authDomain: "bs-box-pedidos.firebaseapp.com",
-projectId: "bs-box-pedidos"
-}
-
-firebase.initializeApp(firebaseConfig)
-const db = firebase.firestore()
-
-/* =========================
    VARIAVEIS
 ========================= */
 let produtos=[]
@@ -21,12 +9,34 @@ let numeroPedido=Date.now()
 let clienteSelecionado=null
 let clienteNome=""
 let clientesCache=[]
+let db // 🔥 será definido depois
 
 /* =========================
    INIT SEGURO
 ========================= */
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded", async function(){
 
+// 🔥 GARANTE QUE FIREBASE EXISTE
+if(typeof firebase === "undefined"){
+alert("Firebase não carregou. Verifique os scripts no HTML.")
+return
+}
+
+/* =========================
+   FIREBASE INIT (AGORA CORRETO)
+========================= */
+const firebaseConfig = {
+apiKey: "AIzaSy...",
+authDomain: "bs-box-pedidos.firebaseapp.com",
+projectId: "bs-box-pedidos"
+}
+
+firebase.initializeApp(firebaseConfig)
+db = firebase.firestore()
+
+/* =========================
+   INICIALIZAÇÃO
+========================= */
 let pedidoEl = document.getElementById("pedidoNumero")
 if(pedidoEl){
 pedidoEl.innerText = "Pedido " + numeroPedido
@@ -46,9 +56,8 @@ document.getElementById("filtroFornecedor")?.addEventListener("change", render)
 })
 
 /* =========================
-   🔥 CACHE CLIENTES
+   CACHE CLIENTES
 ========================= */
-
 function carregarCacheLocal(){
 let cacheLocal = localStorage.getItem("clientesCache")
 
