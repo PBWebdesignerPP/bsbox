@@ -9,7 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
@@ -71,14 +70,12 @@ display:none;
 
 <div class="catalogo">
 
-<!-- BUSCA -->
 <input id="buscaCliente" placeholder="Buscar cliente" oninput="buscarClientes()">
 <div id="clienteSelecionadoBox"></div>
 <div id="listaClientes"></div>
 
 <hr>
 
-<!-- CADASTRO -->
 <h4>Novo Cliente</h4>
 
 <input id="nome" placeholder="Razão Social">
@@ -102,7 +99,6 @@ display:none;
 
 <hr>
 
-<!-- PRODUTOS -->
 <input id="busca" placeholder="Buscar produto" oninput="render()">
 
 <select id="filtroCategoria" onchange="render()"></select>
@@ -129,8 +125,7 @@ display:none;
 
 <script>
 
-/* ================= VARIAVEIS ================= */
-
+/* VARIAVEIS */
 let produtos=[]
 let pedido={}
 let numeroPedido=Date.now()
@@ -139,8 +134,7 @@ let clienteNome=""
 
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
-/* ================= UTIL ================= */
-
+/* UTIL */
 function normalizar(t){
 return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 }
@@ -149,8 +143,11 @@ function limparNumero(t){
 return (t||"").replace(/\D/g,"")
 }
 
-/* ================= CATALOGO ================= */
+function matchTexto(campo, termo){
+return normalizar(campo || "").split(" ").some(p=>p.startsWith(termo))
+}
 
+/* CATALOGO */
 function carregarCatalogo(){
 fetch("base_de_produtos.xlsx")
 .then(r=>r.arrayBuffer())
@@ -180,14 +177,11 @@ function popularFiltros(){
 let cat=document.getElementById("filtroCategoria")
 let forn=document.getElementById("filtroFornecedor")
 
-let categorias=[...new Set(produtos.map(p=>p.categoria))]
-let fornecedores=[...new Set(produtos.map(p=>p.fornecedor))]
-
 cat.innerHTML='<option value="">Todas</option>'
 forn.innerHTML='<option value="">Todos</option>'
 
-categorias.forEach(c=>cat.innerHTML+=`<option>${c}</option>`)
-fornecedores.forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
+;[...new Set(produtos.map(p=>p.categoria))].forEach(c=>cat.innerHTML+=`<option>${c}</option>`)
+;[...new Set(produtos.map(p=>p.fornecedor))].forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
 }
 
 function render(){
@@ -225,8 +219,7 @@ lista.appendChild(div)
 renderPedido()
 }
 
-/* ================= PEDIDO ================= */
-
+/* PEDIDO */
 function addItem(c){
 let q=parseInt(document.getElementById("q_"+c).value)
 let prod=produtos.find(p=>p.codigo==c)
@@ -269,13 +262,12 @@ delete pedido[c]
 render()
 }
 
-/* ================= CLIENTES ================= */
-
+/* CLIENTES */
 async function buscarClientes(){
 
 let texto = document.getElementById("buscaCliente").value
 
-if(!texto){
+if(texto.length < 3){
 document.getElementById("listaClientes").innerHTML=""
 return
 }
@@ -292,13 +284,13 @@ snap.forEach(doc=>{
 let c = doc.data()
 
 if(
-normalizar(c.nome).includes(termo) ||
-normalizar(c.nomeFantasia).includes(termo) ||
-normalizar(c.cidade).includes(termo) ||
-normalizar(c.bairro).includes(termo) ||
-normalizar(c.rua).includes(termo) ||
-normalizar(c.nomeContato).includes(termo) ||
-normalizar(c.telefone).includes(termo) ||
+matchTexto(c.nome, termo) ||
+matchTexto(c.nomeFantasia, termo) ||
+matchTexto(c.cidade, termo) ||
+matchTexto(c.bairro, termo) ||
+matchTexto(c.rua, termo) ||
+matchTexto(c.nomeContato, termo) ||
+matchTexto(c.telefone, termo) ||
 limparNumero(c.cnpj).includes(termoNumero)
 ){
 
@@ -322,8 +314,7 @@ lista.appendChild(div)
 })
 }
 
-/* ================= SALVAR CLIENTE ================= */
-
+/* SALVAR CLIENTE */
 function salvarCliente(){
 
 let cliente = {
@@ -354,8 +345,7 @@ document.querySelectorAll(".catalogo input").forEach(i=>i.value="")
 })
 }
 
-/* ================= CNPJ ================= */
-
+/* CNPJ */
 async function buscarCNPJ(){
 
 let c = limparNumero(cnpj.value)
@@ -376,8 +366,7 @@ bairro.value = d.bairro || ""
 rua.value = d.logradouro || ""
 }
 
-/* ================= FIREBASE ================= */
-
+/* FIREBASE */
 function salvarPedidoFirebase(){
 
 if(!clienteSelecionado){
@@ -399,8 +388,7 @@ render()
 })
 }
 
-/* ================= INIT ================= */
-
+/* INIT */
 carregarCatalogo()
 
 </script>
