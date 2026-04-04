@@ -9,6 +9,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+<!-- 🔥 FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCmbM5EmPunEHTUZYsnNtPJykUMvcQ3Yls",
+  authDomain: "bs-box-pedidos.firebaseapp.com",
+  projectId: "bs-box-pedidos",
+  storageBucket: "bs-box-pedidos.firebasestorage.app",
+  messagingSenderId: "889764433720",
+  appId: "1:889764433720:web:3e8df9469aa1d32773bbcd"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+</script>
+
 <style>
 body{font-family:Arial;margin:0;background:#f2f2f2;}
 header{background:white;padding:10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ddd;}
@@ -66,6 +84,7 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 <button onclick="novoPedido()">Novo</button>
 <button onclick="gerarPDF()">PDF</button>
 <button onclick="gerarExcel()">Excel</button>
+<button onclick="salvarPedidoFirebase()">Salvar</button>
 </div>
 </div>
 </div>
@@ -210,80 +229,29 @@ delete pedido[c]
 render()
 }
 
-/* 🔥 NOVA FUNÇÃO PDF POR FORNECEDOR */
-function gerarPDF(){
-let cliente=document.getElementById("cliente").value
-let obs=document.getElementById("observacao").value
+/* 🔥 SALVAR NO FIREBASE */
+function salvarPedidoFirebase(){
 
-let fornecedores={}
-Object.values(pedido).forEach(p=>{
-if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
-fornecedores[p.fornecedor].push(p)
-})
+let cliente = document.getElementById("cliente").value
 
-for(let f in fornecedores){
-
-let html=`<div class='titulo'>CONECTA VAREJO</div>`
-html+=`Pedido ${numeroPedido}<br>Cliente: ${cliente}<br><br>`
-
-html+=`<b>Fornecedor: ${f}</b>`
-html+=`<table class='tabela'>
-<tr><th>Código</th><th>Qtd</th><th>V.Unit</th><th>V.Total</th><th>Descrição</th></tr>`
-
-let sub=0
-
-fornecedores[f].forEach(p=>{
-let totalItem=p.qtd*p.valor
-sub+=totalItem
-
-html+=`<tr>
-<td>${p.codigo}</td>
-<td>${p.qtd}</td>
-<td>${p.valor.toFixed(2)}</td>
-<td>${totalItem.toFixed(2)}</td>
-<td>${p.produto}</td>
-</tr>`
-})
-
-html+=`</table>`
-html+=`<b>Subtotal: ${sub.toFixed(2)}</b><br><br>`
-
-if(obs){
-html+=`<b>Observações:</b><br>${obs}`
+let dadosPedido = {
+cliente: cliente,
+numero: numeroPedido,
+data: new Date(),
+itens: Object.values(pedido),
+total: Object.values(pedido).reduce((t,p)=>t+(p.qtd*p.valor),0),
+observacao: document.getElementById("observacao").value
 }
 
-let container=document.getElementById("pdfTemplate")
-container.innerHTML=html
-container.style.display="block"
-
-html2canvas(container).then(canvas=>{
-const imgData=canvas.toDataURL("image/png")
-const { jsPDF } = window.jspdf
-
-let pdf=new jsPDF("p","mm","a4")
-let imgWidth=210
-let imgHeight=(canvas.height*imgWidth)/canvas.width
-
-pdf.addImage(imgData,'PNG',0,0,imgWidth,imgHeight)
-
-// nome com fornecedor
-let nomeFornecedor = f.replace(/\s+/g, "_")
-pdf.save(nomeFornecedor+"_pedido_"+numeroPedido+".pdf")
-
-container.style.display="none"
+db.collection("pedidos").add(dadosPedido)
+.then(()=>{
+alert("Pedido salvo no Firebase 🚀")
 })
-}
-}
-
-function gerarExcel(){
-let dados=[["Fornecedor","Codigo","Produto","Qtd","Valor","Subtotal"]]
-Object.values(pedido).forEach(p=>{
-dados.push([p.fornecedor,p.codigo,p.produto,p.qtd,p.valor,p.qtd*p.valor])
+.catch((e)=>{
+console.error(e)
+alert("Erro ao salvar")
 })
-let ws=XLSX.utils.aoa_to_sheet(dados)
-let wb=XLSX.utils.book_new()
-XLSX.utils.book_append_sheet(wb,ws,"Pedido")
-XLSX.writeFile(wb,"pedido_"+numeroPedido+".xlsx")
+
 }
 
 function novoPedido(){
