@@ -1,131 +1,7 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BS Box - Conecta Varejo</title>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
-<script>
-const firebaseConfig = {
-apiKey: "AIzaSy...",
-authDomain: "bs-box-pedidos.firebaseapp.com",
-projectId: "bs-box-pedidos"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-</script>
-
-<style>
-body{font-family:Arial;margin:0;background:#f2f2f2;}
-header{background:white;padding:10px;border-bottom:1px solid #ddd;}
-.container{display:flex;height:calc(100vh - 50px);}
-.catalogo{flex:2;overflow:auto;padding:10px;}
-.pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;}
-.pedidoItens{flex:1;overflow:auto;font-size:14px;}
-.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;}
-.qty input{width:60px;text-align:center;}
-button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;}
-
-#listaClientes div{
-padding:6px;
-background:white;
-margin:3px 0;
-cursor:pointer;
-border-radius:5px;
-}
-
-#listaClientes div:hover{background:#ddd;}
-
-input{margin:3px 0;padding:6px;width:100%;}
-
-#clienteSelecionadoBox{
-background:#dff0d8;
-padding:8px;
-border-radius:5px;
-margin:5px 0;
-display:none;
-}
-
-@media(max-width:900px){
-.container{flex-direction:column;}
-.catalogo{padding-bottom:260px;}
-.pedido{position:fixed;bottom:0;height:240px;width:100%;}
-}
-</style>
-</head>
-
-<body>
-
-<header><b>BS Box - Conecta Varejo</b></header>
-
-<div class="container">
-
-<div class="catalogo">
-
-<input id="buscaCliente" placeholder="Buscar cliente" oninput="buscarClientes()">
-<div id="clienteSelecionadoBox"></div>
-<div id="listaClientes"></div>
-
-<hr>
-
-<h4>Novo Cliente</h4>
-
-<input id="nome" placeholder="Razão Social">
-<input id="nomeFantasia" placeholder="Nome Fantasia">
-
-<input id="cnpj" placeholder="CNPJ">
-<button onclick="buscarCNPJ()">Buscar CNPJ</button>
-
-<input id="inscricaoEstadual" placeholder="Inscrição Estadual">
-
-<input id="cep" placeholder="CEP">
-<input id="cidade" placeholder="Cidade">
-<input id="bairro" placeholder="Bairro">
-<input id="rua" placeholder="Rua">
-<input id="numero" placeholder="Número">
-
-<input id="nomeContato" placeholder="Nome do Contato">
-<input id="telefone" placeholder="Telefone">
-
-<button onclick="salvarCliente()">Salvar Cliente</button>
-
-<hr>
-
-<input id="busca" placeholder="Buscar produto" oninput="render()">
-
-<select id="filtroCategoria" onchange="render()"></select>
-<select id="filtroFornecedor" onchange="render()"></select>
-
-<div id="lista"></div>
-
-</div>
-
-<div class="pedido">
-
-<h3 id="pedidoNumero"></h3>
-
-<div id="pedido" class="pedidoItens"></div>
-
-<div id="totalPedido"></div>
-
-<button onclick="gerarPDF()">PDF</button>
-<button onclick="salvarPedidoFirebase()">Salvar Pedido</button>
-
-</div>
-
-</div>
-
 <script>
 
-/* VARIAVEIS */
+/* ================= VARIAVEIS ================= */
+
 let produtos=[]
 let pedido={}
 let numeroPedido=Date.now()
@@ -134,7 +10,8 @@ let clienteNome=""
 
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
-/* UTIL */
+/* ================= UTIL ================= */
+
 function normalizar(t){
 return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 }
@@ -143,11 +20,14 @@ function limparNumero(t){
 return (t||"").replace(/\D/g,"")
 }
 
+/* 🔥 BUSCA INTELIGENTE (palavra por palavra) */
 function matchTexto(campo, termo){
-return normalizar(campo || "").split(" ").some(p=>p.startsWith(termo))
+if(!campo || !termo) return false
+return normalizar(campo).split(" ").some(p=>p.startsWith(termo))
 }
 
-/* CATALOGO */
+/* ================= CATALOGO ================= */
+
 function carregarCatalogo(){
 fetch("base_de_produtos.xlsx")
 .then(r=>r.arrayBuffer())
@@ -219,7 +99,8 @@ lista.appendChild(div)
 renderPedido()
 }
 
-/* PEDIDO */
+/* ================= PEDIDO ================= */
+
 function addItem(c){
 let q=parseInt(document.getElementById("q_"+c).value)
 let prod=produtos.find(p=>p.codigo==c)
@@ -262,11 +143,13 @@ delete pedido[c]
 render()
 }
 
-/* CLIENTES */
+/* ================= CLIENTES ================= */
+
 async function buscarClientes(){
 
 let texto = document.getElementById("buscaCliente").value
 
+/* 🔥 NÃO BUSCA SE NÃO TEM TEXTO */
 if(texto.length < 3){
 document.getElementById("listaClientes").innerHTML=""
 return
@@ -283,16 +166,21 @@ lista.innerHTML=""
 snap.forEach(doc=>{
 let c = doc.data()
 
-if(
+let match =
 matchTexto(c.nome, termo) ||
 matchTexto(c.nomeFantasia, termo) ||
 matchTexto(c.cidade, termo) ||
 matchTexto(c.bairro, termo) ||
 matchTexto(c.rua, termo) ||
 matchTexto(c.nomeContato, termo) ||
-matchTexto(c.telefone, termo) ||
-limparNumero(c.cnpj).includes(termoNumero)
-){
+matchTexto(c.telefone, termo)
+
+/* 🔥 CNPJ SÓ ENTRA SE TIVER NUMERO DIGITADO */
+if(termoNumero){
+match = match || limparNumero(c.cnpj).includes(termoNumero)
+}
+
+if(match){
 
 let div=document.createElement("div")
 div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia}</small>`
@@ -314,7 +202,8 @@ lista.appendChild(div)
 })
 }
 
-/* SALVAR CLIENTE */
+/* ================= SALVAR CLIENTE ================= */
+
 function salvarCliente(){
 
 let cliente = {
@@ -340,12 +229,14 @@ return
 }
 
 db.collection("clientes").add(cliente).then(()=>{
-alert("Cliente salvo")
+alert("Cliente salvo com sucesso")
+
 document.querySelectorAll(".catalogo input").forEach(i=>i.value="")
 })
 }
 
-/* CNPJ */
+/* ================= CNPJ ================= */
+
 async function buscarCNPJ(){
 
 let c = limparNumero(cnpj.value)
@@ -366,7 +257,8 @@ bairro.value = d.bairro || ""
 rua.value = d.logradouro || ""
 }
 
-/* FIREBASE */
+/* ================= FIREBASE ================= */
+
 function salvarPedidoFirebase(){
 
 if(!clienteSelecionado){
@@ -382,15 +274,14 @@ data: new Date(),
 itens:Object.values(pedido),
 total: Object.values(pedido).reduce((s,p)=>s+(p.qtd*p.valorUnit),0)
 }).then(()=>{
-alert("Pedido salvo")
+alert("Pedido salvo com sucesso")
 pedido={}
 render()
 })
 }
 
-/* INIT */
+/* ================= INIT ================= */
+
 carregarCatalogo()
 
 </script>
-</body>
-</html>
