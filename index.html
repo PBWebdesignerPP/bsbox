@@ -26,8 +26,8 @@ const db = firebase.firestore();
 
 <style>
 body{font-family:Arial;margin:0;background:#f2f2f2;}
-header{background:white;padding:10px;display:flex;gap:10px;border-bottom:1px solid #ddd;}
-.container{display:flex;height:calc(100vh - 60px);}
+header{background:white;padding:10px;border-bottom:1px solid #ddd;}
+.container{display:flex;height:calc(100vh - 50px);}
 .catalogo{flex:2;overflow:auto;padding:10px;}
 .pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;}
 .pedidoItens{flex:1;overflow:auto;font-size:14px;}
@@ -36,16 +36,14 @@ header{background:white;padding:10px;display:flex;gap:10px;border-bottom:1px sol
 button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;}
 
 #listaClientes div{
-padding:5px;
+padding:6px;
 background:white;
-margin:2px 0;
+margin:3px 0;
 cursor:pointer;
-border-radius:4px;
+border-radius:5px;
 }
 
-#listaClientes div:hover{
-background:#ddd;
-}
+#listaClientes div:hover{background:#ddd;}
 
 @media(max-width:900px){
 .container{flex-direction:column;}
@@ -57,9 +55,7 @@ background:#ddd;
 
 <body>
 
-<header>
-<b>Conecta Varejo</b>
-</header>
+<header><b>BS Box - Conecta Varejo</b></header>
 
 <div class="container">
 
@@ -94,6 +90,8 @@ background:#ddd;
 
 <script>
 
+/* ================= VARIAVEIS ================= */
+
 let produtos=[]
 let pedido={}
 let numeroPedido=Date.now()
@@ -109,6 +107,21 @@ return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 
 function limparNumero(t){
 return (t||"").replace(/\D/g,"")
+}
+
+/* ================= PADRÃO CLIENTE ================= */
+
+function padronizarCliente(d){
+return {
+nome: d.nome || "",
+nomeFantasia: d.nomeFantasia || "",
+cnpj: d.cnpj || "",
+endereco: d.endereco || "",
+inscricaoEstadual: d.inscricaoEstadual || "",
+contato: d.contato || "",
+nomeContato: d.nomeContato || "",
+telefone: d.telefone || ""
+}
 }
 
 /* ================= CATALOGO ================= */
@@ -244,19 +257,19 @@ let lista = document.getElementById("listaClientes")
 lista.innerHTML=""
 
 snap.forEach(doc=>{
-let c = doc.data()
+let c = padronizarCliente(doc.data())
 
 if(
-normalizar(c.nome || "").includes(termo) ||
-normalizar(c.nomeFantasia || "").includes(termo) ||
-normalizar(c.contato || "").includes(termo) ||
-normalizar(c.telefone || "").includes(termo) ||
-normalizar(c.nomeContato || "").includes(termo) ||
+normalizar(c.nome).includes(termo) ||
+normalizar(c.nomeFantasia).includes(termo) ||
+normalizar(c.contato).includes(termo) ||
+normalizar(c.nomeContato).includes(termo) ||
+normalizar(c.telefone).includes(termo) ||
 limparNumero(c.cnpj).includes(termoNumero)
 ){
 
 let div=document.createElement("div")
-div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia || ""}</small>`
+div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia}</small>`
 
 div.onclick = ()=>{
 clienteSelecionado = doc.id
@@ -284,6 +297,12 @@ pdf.save("pedido.pdf")
 /* ================= FIREBASE ================= */
 
 function salvarPedidoFirebase(){
+
+if(!clienteSelecionado){
+alert("Selecione um cliente")
+return
+}
+
 db.collection("pedidos").add({
 cliente:document.getElementById("cliente").value,
 clienteId: clienteSelecionado,
