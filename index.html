@@ -47,6 +47,14 @@ border-radius:5px;
 
 input{margin:3px 0;padding:6px;width:100%;}
 
+#clienteSelecionadoBox{
+background:#dff0d8;
+padding:8px;
+border-radius:5px;
+margin:5px 0;
+display:none;
+}
+
 @media(max-width:900px){
 .container{flex-direction:column;}
 .catalogo{padding-bottom:260px;}
@@ -65,6 +73,7 @@ input{margin:3px 0;padding:6px;width:100%;}
 
 <!-- BUSCA -->
 <input id="buscaCliente" placeholder="Buscar cliente" oninput="buscarClientes()">
+<div id="clienteSelecionadoBox"></div>
 <div id="listaClientes"></div>
 
 <hr>
@@ -126,6 +135,7 @@ let produtos=[]
 let pedido={}
 let numeroPedido=Date.now()
 let clienteSelecionado=null
+let clienteNome=""
 
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
@@ -263,8 +273,15 @@ render()
 
 async function buscarClientes(){
 
-let termo = normalizar(document.getElementById("buscaCliente").value)
-let termoNumero = limparNumero(document.getElementById("buscaCliente").value)
+let texto = document.getElementById("buscaCliente").value
+
+if(!texto){
+document.getElementById("listaClientes").innerHTML=""
+return
+}
+
+let termo = normalizar(texto)
+let termoNumero = limparNumero(texto)
 
 let snap = await db.collection("clientes").get()
 
@@ -290,8 +307,14 @@ div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia}</small>`
 
 div.onclick = ()=>{
 clienteSelecionado = doc.id
+clienteNome = c.nome
+
 document.getElementById("buscaCliente").value = c.nome
 lista.innerHTML=""
+
+let box = document.getElementById("clienteSelecionadoBox")
+box.style.display="block"
+box.innerHTML=`Cliente selecionado:<br><b>${c.nome}</b>`
 }
 
 lista.appendChild(div)
@@ -363,7 +386,7 @@ return
 }
 
 db.collection("pedidos").add({
-cliente: buscaCliente.value,
+cliente: clienteNome,
 clienteId: clienteSelecionado,
 numero: numeroPedido,
 data: new Date(),
