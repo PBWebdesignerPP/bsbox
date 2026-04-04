@@ -214,32 +214,48 @@ fornecedores.forEach(f=>forn.innerHTML+=`<option value="${f}">${f}</option>`)
 /* 🔥 BUSCAR CLIENTES */
 async function buscarClientes(){
 
-let termo=document.getElementById("cliente").value.toLowerCase()
+let termo = document.getElementById("cliente").value.toLowerCase()
 
-if(termo.length<2){
+if(termo.length < 2){
 document.getElementById("listaClientes").innerHTML=""
 return
 }
 
-let snapshot=await db.collection("clientes").get()
+let snapshot = await db.collection("clientes").get()
 
-let lista=document.getElementById("listaClientes")
+let lista = document.getElementById("listaClientes")
 lista.innerHTML=""
 
 snapshot.forEach(doc=>{
-let c=doc.data()
+let c = doc.data()
 
-if(c.nome.toLowerCase().includes(termo)){
-let div=document.createElement("div")
+let nome = (c.nome || "").toLowerCase()
+let fantasia = (c.nomeFantasia || "").toLowerCase()
+let cnpj = (c.cnpj || "")
+let telefone = (c.telefone || "")
+
+if(
+nome.includes(termo) ||
+fantasia.includes(termo) ||
+cnpj.includes(termo) ||
+telefone.includes(termo)
+){
+
+let div = document.createElement("div")
 div.style.padding="8px"
+div.style.borderBottom="1px solid #eee"
 div.style.cursor="pointer"
 
-div.innerHTML=`<b>${c.nome}</b><br><small>${c.nomeFantasia||""}</small>`
+div.innerHTML = `
+<b>${c.nome}</b><br>
+<small>${c.nomeFantasia || ""}</small>
+`
 
-div.onclick=()=>selecionarCliente(doc.id,c)
+div.onclick = () => selecionarCliente(doc.id, c)
 
 lista.appendChild(div)
 }
+
 })
 }
 
