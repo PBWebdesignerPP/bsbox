@@ -9,18 +9,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-<!-- 🔥 FIREBASE -->
+<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyCmbM5EmPunEHTUZYsnNtPJykUMvcQ3Yls",
-  authDomain: "bs-box-pedidos.firebaseapp.com",
-  projectId: "bs-box-pedidos",
-  storageBucket: "bs-box-pedidos.firebasestorage.app",
-  messagingSenderId: "889764433720",
-  appId: "1:889764433720:web:3e8df9469aa1d32773bbcd"
+apiKey: "AIzaSyCmbM5EmPunEHTUZYsnNtPJykUMvcQ3Yls",
+authDomain: "bs-box-pedidos.firebaseapp.com",
+projectId: "bs-box-pedidos",
+storageBucket: "bs-box-pedidos.firebasestorage.app",
+messagingSenderId: "889764433720",
+appId: "1:889764433720:web:3e8df9469aa1d32773bbcd"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -39,28 +39,21 @@ header img{height:45px;}
 .pedidoItens{flex:1;overflow:auto;font-size:14px;margin-bottom:10px;}
 textarea{width:100%;min-height:60px;}
 
-.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;gap:10px;}
+.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;}
 
-.qty{display:flex;flex-direction:column;gap:5px;}
-.qty input{width:60px;text-align:center;}
+.qty{display:flex;flex-direction:column;}
+.qty input{width:60px;}
 
-button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;flex:1;}
+button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;}
 
 .botoes{display:flex;gap:5px;}
 .total{font-weight:bold;font-size:17px;}
 
-/* 🔥 MOBILE CORRIGIDO */
+#lista{margin-top:20px;}
+
 @media(max-width:900px){
-
-.container{
-flex-direction:column;
-}
-
-.catalogo{
-height:auto;
-padding-bottom:220px;
-}
-
+.container{flex-direction:column;}
+.catalogo{padding-bottom:220px;}
 .pedido{
 position:fixed;
 bottom:0;
@@ -68,10 +61,9 @@ left:0;
 right:0;
 height:200px;
 z-index:999;
-border-top:2px solid #ddd;
 background:white;
+border-top:2px solid #ddd;
 }
-
 }
 </style>
 </head>
@@ -93,67 +85,50 @@ background:white;
 <br><br>
 
 <input id="cliente" placeholder="Razão social" oninput="buscarClientes()">
-
-<div id="listaClientes" style="background:white; border:1px solid #ccc;"></div>
+<div id="listaClientes" style="background:white;border:1px solid #ccc;"></div>
 
 <br>
 
-<input id="nomeFantasia" placeholder="Nome fantasia">
+<input id="nomeFantasia" placeholder="Nome fantasia"><br><br>
 
-<br><br>
-
-<input id="cnpj" placeholder="CNPJ (somente números)">
+<input id="cnpj" placeholder="CNPJ">
 <button onclick="buscarCNPJ()">Buscar CNPJ</button>
 
 <br><br>
 
-<input id="endereco" placeholder="Endereço">
-
-<br><br>
-
-<input id="ie" placeholder="Inscrição Estadual">
-
-<br><br>
-
-<input id="contato" placeholder="Nome do contato">
-
-<br><br>
-
-<input id="telefone" placeholder="Telefone">
-
-<br><br>
+<input id="endereco" placeholder="Endereço"><br><br>
+<input id="ie" placeholder="Inscrição Estadual"><br><br>
+<input id="contato" placeholder="Contato"><br><br>
+<input id="telefone" placeholder="Telefone"><br><br>
 
 <button onclick="salvarClienteFirebase()">Salvar Cliente</button>
 
 <br><br>
 
-<input id="busca" placeholder="Buscar produto ou código" oninput="render()">
+<input id="busca" placeholder="Buscar produto" oninput="render()">
 
 <br><br>
 
 <select id="filtroCategoria" onchange="render()"></select>
 <select id="filtroFornecedor" onchange="render()"></select>
 
+<h3>Produtos</h3>
 <div id="lista"></div>
 </div>
 
 <div class="pedido">
 <h3 id="pedidoNumero"></h3>
-<div class="pedidoItens" id="pedido"></div>
-<div class="total" id="totalPedido"></div>
-<textarea id="observacao" placeholder="Observações"></textarea>
+<div id="pedido" class="pedidoItens"></div>
+<div id="totalPedido"></div>
+<textarea id="observacao"></textarea>
 
 <div class="botoes">
 <button onclick="novoPedido()">Novo</button>
-<button onclick="gerarPDF()">PDF</button>
-<button onclick="gerarExcel()">Excel</button>
-<button onclick="salvarPedidoFirebase()">Salvar Pedido</button>
+<button onclick="salvarPedidoFirebase()">Salvar</button>
 </div>
 </div>
 
 </div>
-
-<div id="pdfTemplate" style="display:none"></div>
 
 <script>
 
@@ -169,16 +144,16 @@ let d=new Date()
 return d.getFullYear()+("0"+(d.getMonth()+1)).slice(-2)+("0"+d.getDate()).slice(-2)+"-"+("0"+d.getHours()).slice(-2)+("0"+d.getMinutes()).slice(-2)
 }
 
-function normalizar(t){return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
-
-carregarCatalogo()
+function normalizar(t){
+return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+}
 
 function carregarCatalogo(){
 fetch("base_de_produtos.xlsx?"+Date.now())
 .then(r=>r.arrayBuffer())
 .then(data=>{
-const workbook=XLSX.read(data,{type:'array'})
-const sheet=workbook.Sheets[workbook.SheetNames[0]]
+const wb=XLSX.read(data,{type:'array'})
+const sheet=wb.Sheets[wb.SheetNames[0]]
 const json=XLSX.utils.sheet_to_json(sheet,{header:1})
 
 produtos=[]
@@ -186,7 +161,6 @@ json.slice(1).forEach(l=>{
 if(!l[0]) return
 produtos.push({
 codigo:String(l[0]),
-categoria:l[1],
 descricao:l[2],
 fornecedor:l[3],
 valorUnit:parseFloat(l[4])||0,
@@ -194,77 +168,51 @@ pedidoMin:parseInt(l[6])||1
 })
 })
 
-popularFiltros();render()
-})}
-
-function popularFiltros(){
-let categorias=[...new Set(produtos.map(p=>p.categoria))]
-let fornecedores=[...new Set(produtos.map(p=>p.fornecedor))]
-
-let cat=document.getElementById("filtroCategoria")
-let forn=document.getElementById("filtroFornecedor")
-
-cat.innerHTML='<option value="">Todas categorias</option>'
-forn.innerHTML='<option value="">Todos fornecedores</option>'
-
-categorias.forEach(c=>cat.innerHTML+=`<option value="${c}">${c}</option>`)
-fornecedores.forEach(f=>forn.innerHTML+=`<option value="${f}">${f}</option>`)
+render()
+})
 }
 
-/* 🔥 BUSCAR CLIENTES */
+/* BUSCAR CLIENTES */
 async function buscarClientes(){
 
-let termo = document.getElementById("cliente").value.toLowerCase()
+let termo=document.getElementById("cliente").value.toLowerCase()
 
-if(termo.length < 2){
+if(termo.length<2){
 document.getElementById("listaClientes").innerHTML=""
 return
 }
 
-let snapshot = await db.collection("clientes").get()
-
-let lista = document.getElementById("listaClientes")
+let snapshot=await db.collection("clientes").get()
+let lista=document.getElementById("listaClientes")
 lista.innerHTML=""
 
 snapshot.forEach(doc=>{
-let c = doc.data()
-
-let nome = (c.nome || "").toLowerCase()
-let fantasia = (c.nomeFantasia || "").toLowerCase()
-let cnpj = (c.cnpj || "")
-let telefone = (c.telefone || "")
+let c=doc.data()
 
 if(
-nome.includes(termo) ||
-fantasia.includes(termo) ||
-cnpj.includes(termo) ||
-telefone.includes(termo)
+(c.nome||"").toLowerCase().includes(termo) ||
+(c.nomeFantasia||"").toLowerCase().includes(termo) ||
+(c.cnpj||"").includes(termo) ||
+(c.telefone||"").includes(termo)
 ){
-
-let div = document.createElement("div")
+let div=document.createElement("div")
 div.style.padding="8px"
-div.style.borderBottom="1px solid #eee"
 div.style.cursor="pointer"
 
-div.innerHTML = `
-<b>${c.nome}</b><br>
-<small>${c.nomeFantasia || ""}</small>
-`
+div.innerHTML=`<b>${c.nome}</b><br><small>${c.nomeFantasia||""}</small>`
 
-div.onclick = () => selecionarCliente(doc.id, c)
+div.onclick=()=>selecionarCliente(doc.id,c)
 
 lista.appendChild(div)
 }
-
 })
 }
 
-/* 🔥 SELECIONAR CLIENTE */
+/* SELECIONAR */
 function selecionarCliente(id,c){
-
 clienteSelecionado=id
 
-document.getElementById("cliente").value=c.nome
+document.getElementById("cliente").value=c.nome||""
 document.getElementById("nomeFantasia").value=c.nomeFantasia||""
 document.getElementById("cnpj").value=c.cnpj||""
 document.getElementById("endereco").value=c.endereco||""
@@ -275,52 +223,33 @@ document.getElementById("telefone").value=c.telefone||""
 document.getElementById("listaClientes").innerHTML=""
 }
 
-/* 🔥 BUSCAR CNPJ */
-async function buscarCNPJ(){
-
-let cnpj=document.getElementById("cnpj").value.replace(/\D/g,'')
-
-if(cnpj.length!==14){
-alert("CNPJ inválido")
-return
-}
-
-try{
-let res=await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
-let data=await res.json()
-
-document.getElementById("cliente").value=data.razao_social||""
-document.getElementById("nomeFantasia").value=data.nome_fantasia||""
-document.getElementById("endereco").value=
-(data.logradouro||"")+" "+(data.numero||"")+" - "+(data.municipio||"")
-
-}catch(e){
-alert("Erro ao buscar CNPJ")
-}
-}
-
-/* 🔥 SALVAR CLIENTE */
+/* SALVAR CLIENTE */
 function salvarClienteFirebase(){
 
-let cliente={
-nome:cliente.value,
-nomeFantasia:nomeFantasia.value,
-cnpj:cnpj.value.replace(/\D/g,''),
-endereco:endereco.value,
-inscricaoEstadual:ie.value,
-contato:contato.value,
-telefone:telefone.value,
+let clienteObj={
+nome:document.getElementById("cliente").value,
+nomeFantasia:document.getElementById("nomeFantasia").value,
+cnpj:document.getElementById("cnpj").value.replace(/\D/g,''),
+endereco:document.getElementById("endereco").value,
+inscricaoEstadual:document.getElementById("ie").value,
+contato:document.getElementById("contato").value,
+telefone:document.getElementById("telefone").value,
 dataCadastro:new Date()
 }
 
-db.collection("clientes").add(cliente)
-.then(()=>alert("Cliente salvo 🚀"))
+if(!clienteObj.nome){
+alert("Nome obrigatório")
+return
 }
 
-/* 🔥 PEDIDO */
-function salvarPedidoFirebase(){
+db.collection("clientes").add(clienteObj)
+.then(()=>alert("Cliente salvo 🚀"))
+.catch(()=>alert("Erro ao salvar"))
+}
 
-let dadosPedido={
+/* PEDIDO */
+function salvarPedidoFirebase(){
+let dados={
 cliente:document.getElementById("cliente").value,
 clienteId:clienteSelecionado,
 numero:numeroPedido,
@@ -329,14 +258,63 @@ itens:Object.values(pedido),
 total:Object.values(pedido).reduce((t,p)=>t+(p.qtd*p.valor),0)
 }
 
-db.collection("pedidos").add(dadosPedido)
+db.collection("pedidos").add(dados)
 .then(()=>alert("Pedido salvo 🚀"))
 }
 
-function render(){/* mantido igual */}
-function addItem(c){/* mantido igual */}
-function renderPedido(){/* mantido igual */}
-function removerItem(c){delete pedido[c];render()}
+/* PRODUTOS */
+function render(){
+let lista=document.getElementById("lista")
+lista.innerHTML=""
+
+produtos.forEach(p=>{
+let div=document.createElement("div")
+div.className="card"
+
+div.innerHTML=`
+<div>
+<b>${p.descricao}</b><br>
+R$ ${p.valorUnit.toFixed(2)}
+</div>
+<div>
+<input type="number" id="q_${p.codigo}" placeholder="Qtd">
+<button onclick="addItem('${p.codigo}')">Add</button>
+</div>
+`
+
+lista.appendChild(div)
+})
+
+renderPedido()
+}
+
+function addItem(c){
+let q=parseInt(document.getElementById("q_"+c).value)
+let prod=produtos.find(p=>p.codigo==c)
+
+if(!q || q<prod.pedidoMin){
+alert("Pedido mínimo "+prod.pedidoMin)
+return
+}
+
+pedido[c]={codigo:c,produto:prod.descricao,qtd:q,valor:prod.valorUnit}
+render()
+}
+
+function renderPedido(){
+let box=document.getElementById("pedido")
+box.innerHTML=""
+let total=0
+
+Object.values(pedido).forEach(p=>{
+let st=p.qtd*p.valor
+total+=st
+
+box.innerHTML+=`${p.produto} - ${p.qtd}x R$ ${st.toFixed(2)}<br>`
+})
+
+document.getElementById("totalPedido").innerText="Total R$ "+total.toFixed(2)
+}
 
 function novoPedido(){
 pedido={}
@@ -344,6 +322,8 @@ numeroPedido=gerarNumeroPedido()
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 render()
 }
+
+carregarCatalogo()
 
 </script>
 </body>
