@@ -1,103 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BS Box - Conecta Varejo</title>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
-<style>
-body{font-family:Arial;margin:0;background:#f2f2f2;}
-header{background:white;padding:10px;border-bottom:1px solid #ddd;}
-.container{display:flex;height:calc(100vh - 50px);}
-.catalogo{flex:2;overflow:auto;padding:10px;}
-.pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;}
-.pedidoItens{flex:1;overflow:auto;font-size:14px;}
-.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;}
-.qty input{width:60px;text-align:center;}
-button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;}
-input{margin:3px 0;padding:6px;width:100%;}
-
-#listaClientes div{padding:6px;background:white;margin:3px 0;cursor:pointer;border-radius:5px;}
-#listaClientes div:hover{background:#ddd;}
-
-#clienteSelecionadoBox{background:#dff0d8;padding:8px;border-radius:5px;margin:5px 0;display:none;}
-
-@media(max-width:900px){
-.container{flex-direction:column;}
-.catalogo{padding-bottom:260px;}
-.pedido{position:fixed;bottom:0;height:240px;width:100%;}
-}
-</style>
-</head>
-
-<body>
-
-<header><b>BS Box - Conecta Varejo</b></header>
-
-<div class="container">
-
-<div class="catalogo">
-
-<input id="buscaCliente" placeholder="Buscar cliente">
-<div id="clienteSelecionadoBox"></div>
-<div id="listaClientes"></div>
-
-<hr>
-
-<h4>Novo Cliente</h4>
-
-<input id="nome" placeholder="Razão Social">
-<input id="nomeFantasia" placeholder="Nome Fantasia">
-
-<input id="cnpj" placeholder="CNPJ">
-<button onclick="buscarCNPJ()">Buscar CNPJ</button>
-
-<input id="inscricaoEstadual" placeholder="Inscrição Estadual">
-
-<input id="cep" placeholder="CEP">
-<input id="cidade" placeholder="Cidade">
-<input id="bairro" placeholder="Bairro">
-<input id="rua" placeholder="Rua">
-<input id="numero" placeholder="Número">
-
-<input id="nomeContato" placeholder="Nome do Contato">
-<input id="telefone" placeholder="Telefone">
-
-<button onclick="salvarCliente()">Salvar Cliente</button>
-
-<hr>
-
-<input id="busca" placeholder="Buscar produto">
-
-<select id="filtroCategoria"></select>
-<select id="filtroFornecedor"></select>
-
-<div id="lista"></div>
-
-</div>
-
-<div class="pedido">
-
-<h3 id="pedidoNumero"></h3>
-
-<div id="pedido" class="pedidoItens"></div>
-
-<div id="totalPedido"></div>
-
-<button onclick="gerarPDF()">PDF</button>
-<button onclick="salvarPedidoFirebase()">Salvar Pedido</button>
-
-</div>
-
-</div>
-
 <script>
 
 /* VARIAVEIS */
@@ -106,16 +6,67 @@ let pedido={}
 let numeroPedido=Date.now()
 let clienteSelecionado=null
 let clienteNome=""
+let clientesCache=[] // 🔥 CACHE GLOBAL
 
 /* INIT SEGURO */
-window.onload = function(){
+window.onload = async function(){
+
 document.getElementById("pedidoNumero").innerText = "Pedido " + numeroPedido
+
+// 🔥 1. CARREGA CACHE LOCAL INSTANTÂNEO
+carregarCacheLocal()
+
+// 🔥 2. ATUALIZA EM SEGUNDO PLANO (SEM TRAVAR)
+atualizarClientesFirebase()
+
 carregarCatalogo()
 
 document.getElementById("buscaCliente").addEventListener("input", buscarClientes)
 document.getElementById("busca").addEventListener("input", render)
 document.getElementById("filtroCategoria").addEventListener("change", render)
 document.getElementById("filtroFornecedor").addEventListener("change", render)
+}
+
+/* =========================
+   🔥 CACHE CLIENTES
+========================= */
+
+// CARREGA DO LOCALSTORAGE
+function carregarCacheLocal(){
+let cacheLocal = localStorage.getItem("clientesCache")
+
+if(cacheLocal){
+clientesCache = JSON.parse(cacheLocal)
+console.log("Cache local carregado:", clientesCache.length)
+}
+}
+
+// SALVA NO LOCALSTORAGE
+function salvarCacheLocal(){
+localStorage.setItem("clientesCache", JSON.stringify(clientesCache))
+}
+
+// ATUALIZA DO FIREBASE
+async function atualizarClientesFirebase(){
+try{
+let snap = await db.collection("clientes").get()
+
+clientesCache = []
+
+snap.forEach(doc=>{
+clientesCache.push({
+id: doc.id,
+...doc.data()
+})
+})
+
+salvarCacheLocal()
+
+console.log("Clientes atualizados do Firebase")
+
+}catch(e){
+console.log("Sem internet, usando cache local")
+}
 }
 
 /* UTIL */
@@ -255,8 +206,8 @@ delete pedido[c]
 render()
 }
 
-/* CLIENTES */
-async function buscarClientes(){
+/* CLIENTES (AGORA COM CACHE) */
+function buscarClientes(){
 
 let texto = document.getElementById("buscaCliente").value
 
@@ -268,13 +219,10 @@ return
 let termo = normalizar(texto)
 let termoNumero = limparNumero(texto)
 
-let snap = await db.collection("clientes").get()
-
 let lista = document.getElementById("listaClientes")
 lista.innerHTML=""
 
-snap.forEach(doc=>{
-let c = doc.data()
+clientesCache.forEach(c=>{
 
 let match =
 matchTexto(c.nome, termo) ||
@@ -295,7 +243,7 @@ let div=document.createElement("div")
 div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia}</small>`
 
 div.onclick = ()=>{
-clienteSelecionado = doc.id
+clienteSelecionado = c.id
 clienteNome = c.nome
 
 document.getElementById("buscaCliente").value = c.nome
@@ -336,7 +284,13 @@ return
 }
 }
 
-db.collection("clientes").add(cliente).then(()=>{
+db.collection("clientes").add(cliente).then((docRef)=>{
+
+// 🔥 ATUALIZA CACHE IMEDIATO
+cliente.id = docRef.id
+clientesCache.push(cliente)
+salvarCacheLocal()
+
 alert("Cliente salvo com sucesso")
 })
 }
@@ -394,6 +348,3 @@ firebase.initializeApp(firebaseConfig)
 const db = firebase.firestore()
 
 </script>
-
-</body>
-</html>
