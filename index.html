@@ -1,30 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BS Box - Conecta Varejo</title>
+
+<link rel="icon" href="data:,">
+
+<!-- 🔥 FIREBASE (ANTES DE TUDO) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- LIBS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#f2f2f2;}
+header{background:white;padding:10px;border-bottom:1px solid #ddd;}
+.container{display:flex;height:calc(100vh - 50px);}
+.catalogo{flex:2;overflow:auto;padding:10px;}
+.pedido{flex:1;background:white;border-left:1px solid #ddd;padding:10px;display:flex;flex-direction:column;}
+.pedidoItens{flex:1;overflow:auto;font-size:14px;}
+.card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;}
+.qty input{width:60px;text-align:center;}
+button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;}
+input{margin:3px 0;padding:6px;width:100%;}
+#listaClientes div{padding:6px;background:white;margin:3px 0;cursor:pointer;border-radius:5px;}
+#listaClientes div:hover{background:#ddd;}
+#clienteSelecionadoBox{background:#dff0d8;padding:8px;border-radius:5px;margin:5px 0;display:none;}
+@media(max-width:900px){
+.container{flex-direction:column;}
+.catalogo{padding-bottom:260px;}
+.pedido{position:fixed;bottom:0;height:240px;width:100%;}
+}
+</style>
+</head>
+
+<body>
+
+<header><b>BS Box - Conecta Varejo</b></header>
+
+<div class="container">
+
+<div class="catalogo">
+
+<input id="buscaCliente" placeholder="Buscar cliente">
+<div id="clienteSelecionadoBox"></div>
+<div id="listaClientes"></div>
+
+<hr>
+
+<h4>Novo Cliente</h4>
+
+<input id="nome" placeholder="Razão Social">
+<input id="nomeFantasia" placeholder="Nome Fantasia">
+
+<input id="cnpj" placeholder="CNPJ">
+<button onclick="buscarCNPJ()">Buscar CNPJ</button>
+
+<input id="inscricaoEstadual" placeholder="Inscrição Estadual">
+
+<input id="cep" placeholder="CEP">
+<input id="cidade" placeholder="Cidade">
+<input id="bairro" placeholder="Bairro">
+<input id="rua" placeholder="Rua">
+<input id="numero" placeholder="Número">
+
+<input id="nomeContato" placeholder="Nome do Contato">
+<input id="telefone" placeholder="Telefone">
+
+<button onclick="salvarCliente()">Salvar Cliente</button>
+
+<hr>
+
+<input id="busca" placeholder="Buscar produto">
+<select id="filtroCategoria"></select>
+<select id="filtroFornecedor"></select>
+
+<div id="lista"></div>
+
+</div>
+
+<div class="pedido">
+
+<h3 id="pedidoNumero"></h3>
+<div id="pedido" class="pedidoItens"></div>
+<div id="totalPedido"></div>
+
+<button onclick="gerarPDF()">PDF</button>
+<button onclick="salvarPedidoFirebase()">Salvar Pedido</button>
+
+</div>
+
+</div>
+
 <script>
 
-/* =========================
-   VARIAVEIS
-========================= */
+/* VARIAVEIS */
 let produtos=[]
 let pedido={}
 let numeroPedido=Date.now()
 let clienteSelecionado=null
 let clienteNome=""
 let clientesCache=[]
-let db // 🔥 será definido depois
+let db
 
-/* =========================
-   INIT SEGURO
-========================= */
-document.addEventListener("DOMContentLoaded", async function(){
+/* INIT */
+document.addEventListener("DOMContentLoaded", function(){
 
-// 🔥 GARANTE QUE FIREBASE EXISTE
-if(typeof firebase === "undefined"){
-alert("Firebase não carregou. Verifique os scripts no HTML.")
-return
-}
-
-/* =========================
-   FIREBASE INIT (AGORA CORRETO)
-========================= */
 const firebaseConfig = {
 apiKey: "AIzaSy...",
 authDomain: "bs-box-pedidos.firebaseapp.com",
@@ -34,37 +119,23 @@ projectId: "bs-box-pedidos"
 firebase.initializeApp(firebaseConfig)
 db = firebase.firestore()
 
-/* =========================
-   INICIALIZAÇÃO
-========================= */
-let pedidoEl = document.getElementById("pedidoNumero")
-if(pedidoEl){
-pedidoEl.innerText = "Pedido " + numeroPedido
-}
+document.getElementById("pedidoNumero").innerText = "Pedido " + numeroPedido
 
-// 🔥 CACHE
 carregarCacheLocal()
 atualizarClientesFirebase()
-
 carregarCatalogo()
 
-document.getElementById("buscaCliente")?.addEventListener("input", buscarClientes)
-document.getElementById("busca")?.addEventListener("input", render)
-document.getElementById("filtroCategoria")?.addEventListener("change", render)
-document.getElementById("filtroFornecedor")?.addEventListener("change", render)
+document.getElementById("buscaCliente").addEventListener("input", buscarClientes)
+document.getElementById("busca").addEventListener("input", render)
+document.getElementById("filtroCategoria").addEventListener("change", render)
+document.getElementById("filtroFornecedor").addEventListener("change", render)
 
 })
 
-/* =========================
-   CACHE CLIENTES
-========================= */
+/* CACHE */
 function carregarCacheLocal(){
-let cacheLocal = localStorage.getItem("clientesCache")
-
-if(cacheLocal){
-clientesCache = JSON.parse(cacheLocal)
-console.log("Cache carregado:", clientesCache.length)
-}
+let c = localStorage.getItem("clientesCache")
+if(c) clientesCache = JSON.parse(c)
 }
 
 function salvarCacheLocal(){
@@ -74,184 +145,27 @@ localStorage.setItem("clientesCache", JSON.stringify(clientesCache))
 async function atualizarClientesFirebase(){
 try{
 let snap = await db.collection("clientes").get()
-
-clientesCache = []
-
+clientesCache=[]
 snap.forEach(doc=>{
-clientesCache.push({
-id: doc.id,
-...doc.data()
+clientesCache.push({id:doc.id,...doc.data()})
 })
-})
-
 salvarCacheLocal()
-console.log("Clientes atualizados do Firebase")
-
-}catch(e){
-console.log("Sem internet, usando cache local")
-}
+}catch(e){}
 }
 
-/* =========================
-   UTIL
-========================= */
+/* UTIL */
 function normalizar(t){
 return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 }
-
 function limparNumero(t){
 return (t||"").replace(/\D/g,"")
 }
 
-function matchTexto(campo, termo){
-if(!campo || !termo) return false
-return normalizar(campo).includes(termo)
-}
-
-/* =========================
-   CATALOGO
-========================= */
-function carregarCatalogo(){
-fetch("base_de_produtos.xlsx")
-.then(r=>{
-if(!r.ok){
-alert("Arquivo base_de_produtos.xlsx não encontrado")
-return
-}
-return r.arrayBuffer()
-})
-.then(data=>{
-if(!data) return
-
-const wb = XLSX.read(data,{type:'array'})
-const sheet = wb.Sheets[wb.SheetNames[0]]
-const json = XLSX.utils.sheet_to_json(sheet,{header:1})
-
-produtos=[]
-json.slice(1).forEach(l=>{
-produtos.push({
-codigo:l[0],
-categoria:l[1],
-descricao:l[2],
-fornecedor:l[3],
-valorUnit:l[4],
-pedidoMin:l[6]||1
-})
-})
-
-popularFiltros()
-render()
-})
-}
-
-function popularFiltros(){
-let cat=document.getElementById("filtroCategoria")
-let forn=document.getElementById("filtroFornecedor")
-
-if(!cat || !forn) return
-
-cat.innerHTML='<option value="">Todas</option>'
-forn.innerHTML='<option value="">Todos</option>'
-
-;[...new Set(produtos.map(p=>p.categoria))].forEach(c=>cat.innerHTML+=`<option>${c}</option>`)
-;[...new Set(produtos.map(p=>p.fornecedor))].forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
-}
-
-function render(){
-
-let busca=normalizar(document.getElementById("busca")?.value)
-let categoria=document.getElementById("filtroCategoria")?.value
-let fornecedor=document.getElementById("filtroFornecedor")?.value
-
-let lista=document.getElementById("lista")
-if(!lista) return
-
-lista.innerHTML=""
-
-produtos.filter(p=>{
-return normalizar(p.descricao).includes(busca)
-&& (!categoria || p.categoria==categoria)
-&& (!fornecedor || p.fornecedor==fornecedor)
-}).forEach(p=>{
-
-let div=document.createElement("div")
-div.className="card"
-
-div.innerHTML=`
-<div>
-<b>${p.descricao}</b><br>
-R$ ${p.valorUnit}<br>
-Min: ${p.pedidoMin}
-</div>
-<div class="qty">
-<input type="number" id="q_${p.codigo}">
-<button onclick="addItem('${p.codigo}')">Add</button>
-</div>`
-
-lista.appendChild(div)
-})
-
-renderPedido()
-}
-
-/* =========================
-   PEDIDO
-========================= */
-function addItem(c){
-let q=parseInt(document.getElementById("q_"+c)?.value)
-let prod=produtos.find(p=>p.codigo==c)
-
-if(!q || q<prod.pedidoMin){
-alert("Pedido mínimo "+prod.pedidoMin)
-return
-}
-
-pedido[c]={...prod,qtd:q}
-render()
-}
-
-function renderPedido(){
-let box=document.getElementById("pedido")
-if(!box) return
-
-box.innerHTML=""
-let total=0
-
-Object.values(pedido).forEach(p=>{
-let st=p.qtd*p.valorUnit
-total+=st
-
-box.innerHTML+=`
-${p.descricao} - ${p.qtd}x 
-<input value="${p.valorUnit}" onchange="alterarValor('${p.codigo}',this.value)">
-= ${st.toFixed(2)}
-<button onclick="removerItem('${p.codigo}')">X</button><br>`
-})
-
-let totalEl = document.getElementById("totalPedido")
-if(totalEl){
-totalEl.innerText="Total "+total.toFixed(2)
-}
-}
-
-function alterarValor(c,v){
-pedido[c].valorUnit=parseFloat(v)
-renderPedido()
-}
-
-function removerItem(c){
-delete pedido[c]
-render()
-}
-
-/* =========================
-   CLIENTES
-========================= */
+/* CLIENTES */
 function buscarClientes(){
 
-let texto = document.getElementById("buscaCliente")?.value
-
-if(!texto || texto.length < 2){
+let texto = document.getElementById("buscaCliente").value
+if(texto.length < 2){
 document.getElementById("listaClientes").innerHTML=""
 return
 }
@@ -265,121 +179,143 @@ lista.innerHTML=""
 clientesCache.forEach(c=>{
 
 let match =
-matchTexto(c.nome, termo) ||
-matchTexto(c.nomeFantasia, termo) ||
-matchTexto(c.cidade, termo) ||
-matchTexto(c.bairro, termo) ||
-matchTexto(c.rua, termo) ||
-matchTexto(c.nomeContato, termo) ||
-matchTexto(c.telefone, termo)
+normalizar(c.nome).includes(termo) ||
+normalizar(c.nomeFantasia).includes(termo)
 
 if(termoNumero){
 match = match || limparNumero(c.cnpj).includes(termoNumero)
 }
 
 if(match){
-
 let div=document.createElement("div")
 div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia}</small>`
-
-div.onclick = ()=>{
-clienteSelecionado = c.id
-clienteNome = c.nome
-
-document.getElementById("buscaCliente").value = c.nome
+div.onclick=()=>{
+clienteSelecionado=c.id
+clienteNome=c.nome
+document.getElementById("buscaCliente").value=c.nome
 lista.innerHTML=""
-
-let box = document.getElementById("clienteSelecionadoBox")
-box.style.display="block"
-box.innerHTML=`Cliente selecionado:<br><b>${c.nome}</b>`
+document.getElementById("clienteSelecionadoBox").style.display="block"
+document.getElementById("clienteSelecionadoBox").innerHTML=`Cliente selecionado:<br><b>${c.nome}</b>`
 }
-
 lista.appendChild(div)
 }
 })
 }
 
-/* =========================
-   CLIENTE
-========================= */
+/* CLIENTE */
 function salvarCliente(){
 
-let cliente = {
-nome: nome.value,
-nomeFantasia: nomeFantasia.value,
-cnpj: cnpj.value,
-inscricaoEstadual: inscricaoEstadual.value,
-cep: cep.value,
-cidade: cidade.value,
-bairro: bairro.value,
-rua: rua.value,
-numero: numero.value,
-endereco: `${rua.value}, ${numero.value} - ${bairro.value} - ${cidade.value}`,
-nomeContato: nomeContato.value,
-telefone: telefone.value
+let cliente={
+nome:nome.value,
+nomeFantasia:nomeFantasia.value,
+cnpj:cnpj.value,
+inscricaoEstadual:inscricaoEstadual.value,
+cep:cep.value,
+cidade:cidade.value,
+bairro:bairro.value,
+rua:rua.value,
+numero:numero.value,
+endereco:`${rua.value}, ${numero.value} - ${bairro.value} - ${cidade.value}`,
+nomeContato:nomeContato.value,
+telefone:telefone.value
 }
 
 for(let k in cliente){
-if(!cliente[k]){
-alert("Preencha todos os campos")
-return
-}
+if(!cliente[k]) return alert("Preencha todos os campos")
 }
 
-db.collection("clientes").add(cliente).then((docRef)=>{
-
-cliente.id = docRef.id
+db.collection("clientes").add(cliente).then(doc=>{
+cliente.id=doc.id
 clientesCache.push(cliente)
 salvarCacheLocal()
-
-alert("Cliente salvo com sucesso")
+alert("Cliente salvo")
 })
 }
 
-/* =========================
-   CNPJ
-========================= */
-async function buscarCNPJ(){
-let c = limparNumero(cnpj.value)
+/* CATALOGO */
+function carregarCatalogo(){
+fetch("base_de_produtos.xlsx")
+.then(r=>r.arrayBuffer())
+.then(data=>{
+const wb=XLSX.read(data,{type:'array'})
+const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1})
 
-if(c.length!=14){
-alert("CNPJ inválido")
-return
+produtos=[]
+json.slice(1).forEach(l=>{
+produtos.push({
+codigo:l[0],
+descricao:l[2],
+valorUnit:l[4],
+pedidoMin:l[6]||1
+})
+})
+
+render()
+})
 }
 
-let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${c}`)
-let d = await res.json()
+function render(){
+let busca=normalizar(document.getElementById("busca").value)
+let lista=document.getElementById("lista")
+lista.innerHTML=""
 
-nome.value = d.razao_social || ""
-nomeFantasia.value = d.nome_fantasia || ""
-cep.value = d.cep || ""
-cidade.value = d.municipio || ""
-bairro.value = d.bairro || ""
-rua.value = d.logradouro || ""
+produtos.filter(p=>normalizar(p.descricao).includes(busca))
+.forEach(p=>{
+let div=document.createElement("div")
+div.className="card"
+div.innerHTML=`
+<div>${p.descricao}<br>R$ ${p.valorUnit}</div>
+<div><input type="number" id="q_${p.codigo}"><button onclick="addItem('${p.codigo}')">Add</button></div>`
+lista.appendChild(div)
+})
+
+renderPedido()
 }
 
-/* =========================
-   PEDIDO FIREBASE
-========================= */
+/* PEDIDO */
+function addItem(c){
+let q=parseInt(document.getElementById("q_"+c).value)
+let prod=produtos.find(p=>p.codigo==c)
+
+if(!q || q<prod.pedidoMin) return alert("Pedido mínimo "+prod.pedidoMin)
+
+pedido[c]={...prod,qtd:q}
+render()
+}
+
+function renderPedido(){
+let box=document.getElementById("pedido")
+box.innerHTML=""
+let total=0
+
+Object.values(pedido).forEach(p=>{
+let st=p.qtd*p.valorUnit
+total+=st
+box.innerHTML+=`${p.descricao} ${p.qtd}x = ${st.toFixed(2)}<br>`
+})
+
+document.getElementById("totalPedido").innerText="Total "+total.toFixed(2)
+}
+
+/* PEDIDO FIREBASE */
 function salvarPedidoFirebase(){
-
-if(!clienteSelecionado){
-alert("Selecione um cliente")
-return
-}
+if(!clienteSelecionado) return alert("Selecione um cliente")
 
 db.collection("pedidos").add({
-cliente: clienteNome,
-clienteId: clienteSelecionado,
-numero: numeroPedido,
-data: new Date(),
+cliente:clienteNome,
+clienteId:clienteSelecionado,
+numero:numeroPedido,
+data:new Date(),
 itens:Object.values(pedido),
-total: Object.values(pedido).reduce((s,p)=>s+(p.qtd*p.valorUnit),0)
+total:Object.values(pedido).reduce((s,p)=>s+(p.qtd*p.valorUnit),0)
 }).then(()=>{
-alert("Pedido salvo com sucesso")
+alert("Pedido salvo")
 pedido={}
 render()
 })
 }
 
 </script>
+
+</body>
+</html>
