@@ -34,6 +34,19 @@ header{background:white;padding:10px;display:flex;gap:10px;border-bottom:1px sol
 .card{background:white;border-radius:8px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;}
 .qty input{width:60px;text-align:center;}
 button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;}
+
+#listaClientes div{
+padding:5px;
+background:white;
+margin:2px 0;
+cursor:pointer;
+border-radius:4px;
+}
+
+#listaClientes div:hover{
+background:#ddd;
+}
+
 @media(max-width:900px){
 .container{flex-direction:column;}
 .catalogo{padding-bottom:240px;}
@@ -88,9 +101,17 @@ let clienteSelecionado=null
 
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
+/* ================= UTIL ================= */
+
 function normalizar(t){
 return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 }
+
+function limparNumero(t){
+return (t||"").replace(/\D/g,"")
+}
+
+/* ================= CATALOGO ================= */
 
 function carregarCatalogo(){
 fetch("base_de_produtos.xlsx")
@@ -166,6 +187,8 @@ lista.appendChild(div)
 renderPedido()
 }
 
+/* ================= PEDIDO ================= */
+
 function addItem(c){
 let q=parseInt(document.getElementById("q_"+c).value)
 let prod=produtos.find(p=>p.codigo==c)
@@ -208,33 +231,46 @@ delete pedido[c]
 render()
 }
 
-/* CLIENTES */
+/* ================= CLIENTES ================= */
+
 async function buscarClientes(){
 
-let termo=normalizar(document.getElementById("cliente").value)
+let termo = normalizar(document.getElementById("cliente").value)
+let termoNumero = limparNumero(document.getElementById("cliente").value)
 
-let snap=await db.collection("clientes").get()
+let snap = await db.collection("clientes").get()
 
-let lista=document.getElementById("listaClientes")
+let lista = document.getElementById("listaClientes")
 lista.innerHTML=""
 
 snap.forEach(doc=>{
-let c=doc.data()
+let c = doc.data()
 
 if(
-normalizar(c.nome).includes(termo) ||
-normalizar(c.nomeFantasia||"").includes(termo) ||
-(c.cnpj||"").includes(termo)
+normalizar(c.nome || "").includes(termo) ||
+normalizar(c.nomeFantasia || "").includes(termo) ||
+normalizar(c.contato || "").includes(termo) ||
+normalizar(c.telefone || "").includes(termo) ||
+normalizar(c.nomeContato || "").includes(termo) ||
+limparNumero(c.cnpj).includes(termoNumero)
 ){
+
 let div=document.createElement("div")
-div.innerHTML=c.nome
-div.onclick=()=>{clienteSelecionado=doc.id;document.getElementById("cliente").value=c.nome}
+div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia || ""}</small>`
+
+div.onclick = ()=>{
+clienteSelecionado = doc.id
+document.getElementById("cliente").value = c.nome
+lista.innerHTML=""
+}
+
 lista.appendChild(div)
 }
 })
 }
 
-/* PDF */
+/* ================= PDF ================= */
+
 function gerarPDF(){
 html2canvas(document.body).then(canvas=>{
 const img=canvas.toDataURL()
@@ -245,14 +281,24 @@ pdf.save("pedido.pdf")
 })
 }
 
-/* FIREBASE */
+/* ================= FIREBASE ================= */
+
 function salvarPedidoFirebase(){
 db.collection("pedidos").add({
 cliente:document.getElementById("cliente").value,
+clienteId: clienteSelecionado,
+numero: numeroPedido,
+data: new Date(),
 itens:Object.values(pedido),
-data:new Date()
-}).then(()=>alert("Salvo"))
+total: Object.values(pedido).reduce((s,p)=>s+(p.qtd*p.valorUnit),0)
+}).then(()=>{
+alert("Pedido salvo com sucesso")
+pedido={}
+render()
+})
 }
+
+/* ================= INIT ================= */
 
 carregarCatalogo()
 
