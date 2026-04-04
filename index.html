@@ -45,10 +45,12 @@ border-radius:5px;
 
 #listaClientes div:hover{background:#ddd;}
 
+input{margin:3px 0;padding:6px;width:100%;}
+
 @media(max-width:900px){
 .container{flex-direction:column;}
-.catalogo{padding-bottom:240px;}
-.pedido{position:fixed;bottom:0;height:220px;width:100%;}
+.catalogo{padding-bottom:260px;}
+.pedido{position:fixed;bottom:0;height:240px;width:100%;}
 }
 </style>
 </head>
@@ -61,9 +63,37 @@ border-radius:5px;
 
 <div class="catalogo">
 
-<input id="cliente" placeholder="Cliente" oninput="buscarClientes()">
+<!-- BUSCA -->
+<input id="buscaCliente" placeholder="Buscar cliente" oninput="buscarClientes()">
 <div id="listaClientes"></div>
 
+<hr>
+
+<!-- CADASTRO -->
+<h4>Novo Cliente</h4>
+
+<input id="nome" placeholder="Razão Social">
+<input id="nomeFantasia" placeholder="Nome Fantasia">
+
+<input id="cnpj" placeholder="CNPJ">
+<button onclick="buscarCNPJ()">Buscar CNPJ</button>
+
+<input id="inscricaoEstadual" placeholder="Inscrição Estadual">
+
+<input id="cep" placeholder="CEP">
+<input id="cidade" placeholder="Cidade">
+<input id="bairro" placeholder="Bairro">
+<input id="rua" placeholder="Rua">
+<input id="numero" placeholder="Número">
+
+<input id="nomeContato" placeholder="Nome do Contato">
+<input id="telefone" placeholder="Telefone">
+
+<button onclick="salvarCliente()">Salvar Cliente</button>
+
+<hr>
+
+<!-- PRODUTOS -->
 <input id="busca" placeholder="Buscar produto" oninput="render()">
 
 <select id="filtroCategoria" onchange="render()"></select>
@@ -82,7 +112,7 @@ border-radius:5px;
 <div id="totalPedido"></div>
 
 <button onclick="gerarPDF()">PDF</button>
-<button onclick="salvarPedidoFirebase()">Salvar</button>
+<button onclick="salvarPedidoFirebase()">Salvar Pedido</button>
 
 </div>
 
@@ -107,21 +137,6 @@ return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 
 function limparNumero(t){
 return (t||"").replace(/\D/g,"")
-}
-
-/* ================= PADRÃO CLIENTE ================= */
-
-function padronizarCliente(d){
-return {
-nome: d.nome || "",
-nomeFantasia: d.nomeFantasia || "",
-cnpj: d.cnpj || "",
-endereco: d.endereco || "",
-inscricaoEstadual: d.inscricaoEstadual || "",
-contato: d.contato || "",
-nomeContato: d.nomeContato || "",
-telefone: d.telefone || ""
-}
 }
 
 /* ================= CATALOGO ================= */
@@ -248,8 +263,8 @@ render()
 
 async function buscarClientes(){
 
-let termo = normalizar(document.getElementById("cliente").value)
-let termoNumero = limparNumero(document.getElementById("cliente").value)
+let termo = normalizar(document.getElementById("buscaCliente").value)
+let termoNumero = limparNumero(document.getElementById("buscaCliente").value)
 
 let snap = await db.collection("clientes").get()
 
@@ -257,12 +272,14 @@ let lista = document.getElementById("listaClientes")
 lista.innerHTML=""
 
 snap.forEach(doc=>{
-let c = padronizarCliente(doc.data())
+let c = doc.data()
 
 if(
 normalizar(c.nome).includes(termo) ||
 normalizar(c.nomeFantasia).includes(termo) ||
-normalizar(c.contato).includes(termo) ||
+normalizar(c.cidade).includes(termo) ||
+normalizar(c.bairro).includes(termo) ||
+normalizar(c.rua).includes(termo) ||
 normalizar(c.nomeContato).includes(termo) ||
 normalizar(c.telefone).includes(termo) ||
 limparNumero(c.cnpj).includes(termoNumero)
@@ -273,7 +290,7 @@ div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia}</small>`
 
 div.onclick = ()=>{
 clienteSelecionado = doc.id
-document.getElementById("cliente").value = c.nome
+document.getElementById("buscaCliente").value = c.nome
 lista.innerHTML=""
 }
 
@@ -282,16 +299,58 @@ lista.appendChild(div)
 })
 }
 
-/* ================= PDF ================= */
+/* ================= SALVAR CLIENTE ================= */
 
-function gerarPDF(){
-html2canvas(document.body).then(canvas=>{
-const img=canvas.toDataURL()
-const {jsPDF}=window.jspdf
-let pdf=new jsPDF()
-pdf.addImage(img,'PNG',0,0)
-pdf.save("pedido.pdf")
+function salvarCliente(){
+
+let cliente = {
+nome: nome.value,
+nomeFantasia: nomeFantasia.value,
+cnpj: cnpj.value,
+inscricaoEstadual: inscricaoEstadual.value,
+cep: cep.value,
+cidade: cidade.value,
+bairro: bairro.value,
+rua: rua.value,
+numero: numero.value,
+endereco: `${rua.value}, ${numero.value} - ${bairro.value} - ${cidade.value}`,
+nomeContato: nomeContato.value,
+telefone: telefone.value
+}
+
+for(let k in cliente){
+if(!cliente[k]){
+alert("Preencha todos os campos")
+return
+}
+}
+
+db.collection("clientes").add(cliente).then(()=>{
+alert("Cliente salvo")
+document.querySelectorAll(".catalogo input").forEach(i=>i.value="")
 })
+}
+
+/* ================= CNPJ ================= */
+
+async function buscarCNPJ(){
+
+let c = limparNumero(cnpj.value)
+
+if(c.length!=14){
+alert("CNPJ inválido")
+return
+}
+
+let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${c}`)
+let d = await res.json()
+
+nome.value = d.razao_social || ""
+nomeFantasia.value = d.nome_fantasia || ""
+cep.value = d.cep || ""
+cidade.value = d.municipio || ""
+bairro.value = d.bairro || ""
+rua.value = d.logradouro || ""
 }
 
 /* ================= FIREBASE ================= */
@@ -304,14 +363,14 @@ return
 }
 
 db.collection("pedidos").add({
-cliente:document.getElementById("cliente").value,
+cliente: buscaCliente.value,
 clienteId: clienteSelecionado,
 numero: numeroPedido,
 data: new Date(),
 itens:Object.values(pedido),
 total: Object.values(pedido).reduce((s,p)=>s+(p.qtd*p.valorUnit),0)
 }).then(()=>{
-alert("Pedido salvo com sucesso")
+alert("Pedido salvo")
 pedido={}
 render()
 })
