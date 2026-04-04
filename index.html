@@ -59,15 +59,38 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 
 <button onclick="carregarCatalogo()">Atualizar catálogo</button>
 
-<!-- 🔥 NOVO BLOCO CLIENTE -->
+<!-- 🔥 BLOCO CLIENTE COMPLETO -->
 <br><br>
-<input id="cliente" placeholder="Nome do cliente">
+
+<input id="cliente" placeholder="Razão social">
 
 <br><br>
-<input id="cnpj" placeholder="Digite o CNPJ (somente números)">
+
+<input id="nomeFantasia" placeholder="Nome fantasia">
+
+<br><br>
+
+<input id="cnpj" placeholder="CNPJ (somente números)">
 <button onclick="buscarCNPJ()">Buscar CNPJ</button>
 
 <br><br>
+
+<input id="endereco" placeholder="Endereço">
+
+<br><br>
+
+<input id="ie" placeholder="Inscrição Estadual">
+
+<br><br>
+
+<input id="contato" placeholder="Nome do contato">
+
+<br><br>
+
+<input id="telefone" placeholder="Telefone">
+
+<br><br>
+
 <button onclick="salvarClienteFirebase()">Salvar Cliente</button>
 
 <br><br>
@@ -229,7 +252,7 @@ delete pedido[c]
 render()
 }
 
-/* 🔥 BUSCAR CNPJ */
+/* 🔥 BUSCAR CNPJ COMPLETO */
 async function buscarCNPJ(){
 
 let cnpj = document.getElementById("cnpj").value.replace(/\D/g,'')
@@ -243,9 +266,12 @@ try{
 let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
 let data = await res.json()
 
-document.getElementById("cliente").value = data.razao_social
+document.getElementById("cliente").value = data.razao_social || ""
+document.getElementById("nomeFantasia").value = data.nome_fantasia || ""
+document.getElementById("endereco").value =
+(data.logradouro || "") + ", " + (data.numero || "") + " - " + (data.municipio || "")
 
-alert("CNPJ carregado com sucesso")
+alert("CNPJ carregado - confira os dados")
 
 }catch(e){
 alert("Erro ao buscar CNPJ")
@@ -254,21 +280,23 @@ console.error(e)
 
 }
 
-/* 🔥 SALVAR CLIENTE */
+/* 🔥 SALVAR CLIENTE COMPLETO */
 function salvarClienteFirebase(){
 
-let nome = document.getElementById("cliente").value
-let cnpj = document.getElementById("cnpj").value.replace(/\D/g,'')
-
-if(!nome){
-alert("Digite o nome do cliente")
-return
+let cliente = {
+nome: document.getElementById("cliente").value,
+nomeFantasia: document.getElementById("nomeFantasia").value,
+cnpj: document.getElementById("cnpj").value.replace(/\D/g,''),
+endereco: document.getElementById("endereco").value,
+inscricaoEstadual: document.getElementById("ie").value,
+contato: document.getElementById("contato").value,
+telefone: document.getElementById("telefone").value,
+dataCadastro: new Date()
 }
 
-let cliente = {
-nome: nome,
-cnpj: cnpj || null,
-dataCadastro: new Date()
+if(!cliente.nome){
+alert("Nome do cliente obrigatório")
+return
 }
 
 db.collection("clientes").add(cliente)
