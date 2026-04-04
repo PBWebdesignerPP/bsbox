@@ -42,36 +42,43 @@ textarea{width:100%;min-height:60px;}
 button{padding:7px;border:none;border-radius:6px;background:#222;color:white;margin:3px;cursor:pointer;flex:1;}
 .botoes{display:flex;gap:5px;}
 .total{font-weight:bold;font-size:17px;}
-
-@media(max-width:900px){
-.container{flex-direction:column;}
-.catalogo{height:55vh;}
-.pedido{height:45vh;border-top:1px solid #ddd;}
-}
-
-#pdfTemplate{width:800px;padding:20px;background:white;color:black;font-size:12px;}
-.titulo{font-weight:bold;font-size:16px;margin-bottom:10px;}
-.tabela{width:100%;border-collapse:collapse;margin-bottom:10px;}
-.tabela th,.tabela td{border:1px solid #000;padding:4px;text-align:left;}
 </style>
 </head>
 
 <body>
+
 <header>
 <img src="logo_conecta.png">
 <div><b>Conecta Varejo</b><br>Sistema de Pedidos</div>
 </header>
 
 <div class="container">
+
 <div class="catalogo">
 <h2>Catálogo</h2>
+
 <button onclick="carregarCatalogo()">Atualizar catálogo</button>
-<input id="cliente" placeholder="Cliente">
+
+<!-- 🔥 NOVO BLOCO CLIENTE -->
 <br><br>
+<input id="cliente" placeholder="Nome do cliente">
+
+<br><br>
+<input id="cnpj" placeholder="Digite o CNPJ (somente números)">
+<button onclick="buscarCNPJ()">Buscar CNPJ</button>
+
+<br><br>
+<button onclick="salvarClienteFirebase()">Salvar Cliente</button>
+
+<br><br>
+
 <input id="busca" placeholder="Buscar produto ou código" oninput="render()">
+
 <br><br>
+
 <select id="filtroCategoria" onchange="render()"></select>
 <select id="filtroFornecedor" onchange="render()"></select>
+
 <div id="lista"></div>
 </div>
 
@@ -80,21 +87,25 @@ button{padding:7px;border:none;border-radius:6px;background:#222;color:white;mar
 <div class="pedidoItens" id="pedido"></div>
 <div class="total" id="totalPedido"></div>
 <textarea id="observacao" placeholder="Observações"></textarea>
+
 <div class="botoes">
 <button onclick="novoPedido()">Novo</button>
 <button onclick="gerarPDF()">PDF</button>
 <button onclick="gerarExcel()">Excel</button>
-<button onclick="salvarPedidoFirebase()">Salvar</button>
+<button onclick="salvarPedidoFirebase()">Salvar Pedido</button>
 </div>
 </div>
+
 </div>
 
 <div id="pdfTemplate" style="display:none"></div>
 
 <script>
+
 let produtos=[]
 let pedido={}
 let numeroPedido=gerarNumeroPedido()
+
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 
 function gerarNumeroPedido(){
@@ -113,6 +124,7 @@ fetch("base_de_produtos.xlsx?"+Date.now())
 const workbook=XLSX.read(data,{type:'array'})
 const sheet=workbook.Sheets[workbook.SheetNames[0]]
 const json=XLSX.utils.sheet_to_json(sheet,{header:1})
+
 produtos=[]
 json.slice(1).forEach(l=>{
 if(!l[0]) return
@@ -125,6 +137,7 @@ valorUnit:parseFloat(l[4])||0,
 pedidoMin:parseInt(l[6])||1
 })
 })
+
 popularFiltros();render()
 })}
 
@@ -133,8 +146,10 @@ let categorias=[...new Set(produtos.map(p=>p.categoria))]
 let fornecedores=[...new Set(produtos.map(p=>p.fornecedor))]
 let cat=document.getElementById("filtroCategoria")
 let forn=document.getElementById("filtroFornecedor")
+
 cat.innerHTML='<option value="">Todas categorias</option>'
 forn.innerHTML='<option value="">Todos fornecedores</option>'
+
 categorias.forEach(c=>cat.innerHTML+=`<option value="${c}">${c}</option>`)
 fornecedores.forEach(f=>forn.innerHTML+=`<option value="${f}">${f}</option>`)
 }
@@ -144,6 +159,7 @@ let busca=normalizar(document.getElementById("busca").value)
 let categoria=document.getElementById("filtroCategoria").value
 let fornecedor=document.getElementById("filtroFornecedor").value
 let lista=document.getElementById("lista")
+
 lista.innerHTML=""
 
 produtos.filter(p=>{
@@ -152,8 +168,10 @@ let okCat=!categoria||p.categoria==categoria
 let okFor=!fornecedor||p.fornecedor==fornecedor
 return okBusca&&okCat&&okFor
 }).forEach(p=>{
+
 let div=document.createElement("div")
 div.className="card"
+
 div.innerHTML=`
 <div>
 <b>${p.descricao}</b><br>
@@ -165,8 +183,10 @@ R$ ${p.valorUnit.toFixed(2)}<br>
 <input type="number" min="1" placeholder="Qtd" id="q_${p.codigo}">
 <button onclick="addItem('${p.codigo}')">Add</button>
 </div>`
+
 lista.appendChild(div)
 })
+
 renderPedido()
 }
 
@@ -181,6 +201,7 @@ return
 }
 
 pedido[c]={codigo:c,produto:prod.descricao,qtd:q,valor:prod.valorUnit,fornecedor:prod.fornecedor}
+
 input.value=""
 render()
 }
@@ -188,40 +209,19 @@ render()
 function renderPedido(){
 let box=document.getElementById("pedido")
 box.innerHTML=""
+
 let total=0
-let fornecedores={}
 
 Object.values(pedido).forEach(p=>{
-if(!fornecedores[p.fornecedor]) fornecedores[p.fornecedor]=[]
-fornecedores[p.fornecedor].push(p)
-})
-
-for(let f in fornecedores){
-box.innerHTML+=`<b>${f}</b><br>`
-let sub=0
-fornecedores[f].forEach(p=>{
 let st=p.qtd*p.valor
-sub+=st
+total+=st
+
 box.innerHTML+=`
-${p.codigo} - ${p.qtd}x 
-<input type="number" value="${p.valor}" step="0.01" style="width:70px"
-onchange="alterarValor('${p.codigo}', this.value)">
-- R$ ${st.toFixed(2)}
-<button onclick="removerItem('${p.codigo}')">❌</button>
-<br>`
+${p.codigo} - ${p.qtd}x - R$ ${st.toFixed(2)}
+<button onclick="removerItem('${p.codigo}')">❌</button><br>`
 })
-box.innerHTML+=`<b>Subtotal: R$ ${sub.toFixed(2)}</b><br><br>`
-total+=sub
-}
 
 document.getElementById("totalPedido").innerText="Total R$ "+total.toFixed(2)
-}
-
-function alterarValor(c, v){
-v=parseFloat(v)
-if(!v || v<=0) return
-pedido[c].valor=v
-renderPedido()
 }
 
 function removerItem(c){
@@ -229,7 +229,60 @@ delete pedido[c]
 render()
 }
 
-/* 🔥 SALVAR NO FIREBASE */
+/* 🔥 BUSCAR CNPJ */
+async function buscarCNPJ(){
+
+let cnpj = document.getElementById("cnpj").value.replace(/\D/g,'')
+
+if(cnpj.length !== 14){
+alert("CNPJ inválido")
+return
+}
+
+try{
+let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+let data = await res.json()
+
+document.getElementById("cliente").value = data.razao_social
+
+alert("CNPJ carregado com sucesso")
+
+}catch(e){
+alert("Erro ao buscar CNPJ")
+console.error(e)
+}
+
+}
+
+/* 🔥 SALVAR CLIENTE */
+function salvarClienteFirebase(){
+
+let nome = document.getElementById("cliente").value
+let cnpj = document.getElementById("cnpj").value.replace(/\D/g,'')
+
+if(!nome){
+alert("Digite o nome do cliente")
+return
+}
+
+let cliente = {
+nome: nome,
+cnpj: cnpj || null,
+dataCadastro: new Date()
+}
+
+db.collection("clientes").add(cliente)
+.then(()=>{
+alert("Cliente salvo com sucesso 🚀")
+})
+.catch((e)=>{
+console.error(e)
+alert("Erro ao salvar cliente")
+})
+
+}
+
+/* 🔥 SALVAR PEDIDO */
 function salvarPedidoFirebase(){
 
 let cliente = document.getElementById("cliente").value
@@ -261,6 +314,7 @@ document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
 document.getElementById("observacao").value=""
 render()
 }
+
 </script>
 </body>
 </html>
