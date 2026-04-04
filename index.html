@@ -8,7 +8,12 @@ let numeroPedido=Date.now()
 let clienteSelecionado=null
 let clienteNome=""
 
+/* ================= INIT SEGURO ================= */
+
+window.onload = () => {
 document.getElementById("pedidoNumero").innerText="Pedido "+numeroPedido
+carregarCatalogo()
+}
 
 /* ================= UTIL ================= */
 
@@ -20,7 +25,6 @@ function limparNumero(t){
 return (t||"").replace(/\D/g,"")
 }
 
-/* 🔥 BUSCA INTELIGENTE (palavra por palavra) */
 function matchTexto(campo, termo){
 if(!campo || !termo) return false
 return normalizar(campo).split(" ").some(p=>p.startsWith(termo))
@@ -29,7 +33,7 @@ return normalizar(campo).split(" ").some(p=>p.startsWith(termo))
 /* ================= CATALOGO ================= */
 
 function carregarCatalogo(){
-fetch("base_de_produtos.xlsx")
+fetch("base_de_produtos.xlsx?v="+Date.now()) // 🔥 evita cache
 .then(r=>r.arrayBuffer())
 .then(data=>{
 const wb=XLSX.read(data,{type:'array'})
@@ -53,6 +57,8 @@ render()
 })
 }
 
+/* ================= FILTROS ================= */
+
 function popularFiltros(){
 let cat=document.getElementById("filtroCategoria")
 let forn=document.getElementById("filtroFornecedor")
@@ -63,6 +69,8 @@ forn.innerHTML='<option value="">Todos</option>'
 ;[...new Set(produtos.map(p=>p.categoria))].forEach(c=>cat.innerHTML+=`<option>${c}</option>`)
 ;[...new Set(produtos.map(p=>p.fornecedor))].forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
 }
+
+/* ================= RENDER ================= */
 
 function render(){
 
@@ -149,7 +157,6 @@ async function buscarClientes(){
 
 let texto = document.getElementById("buscaCliente").value
 
-/* 🔥 NÃO BUSCA SE NÃO TEM TEXTO */
 if(texto.length < 3){
 document.getElementById("listaClientes").innerHTML=""
 return
@@ -175,7 +182,6 @@ matchTexto(c.rua, termo) ||
 matchTexto(c.nomeContato, termo) ||
 matchTexto(c.telefone, termo)
 
-/* 🔥 CNPJ SÓ ENTRA SE TIVER NUMERO DIGITADO */
 if(termoNumero){
 match = match || limparNumero(c.cnpj).includes(termoNumero)
 }
@@ -230,7 +236,6 @@ return
 
 db.collection("clientes").add(cliente).then(()=>{
 alert("Cliente salvo com sucesso")
-
 document.querySelectorAll(".catalogo input").forEach(i=>i.value="")
 })
 }
@@ -279,9 +284,5 @@ pedido={}
 render()
 })
 }
-
-/* ================= INIT ================= */
-
-carregarCatalogo()
 
 </script>
