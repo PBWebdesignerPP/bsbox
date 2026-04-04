@@ -1,52 +1,67 @@
 <script>
 
-/* VARIAVEIS */
+/* =========================
+   🔥 FIREBASE INIT (PRIMEIRO!)
+========================= */
+const firebaseConfig = {
+apiKey: "AIzaSy...",
+authDomain: "bs-box-pedidos.firebaseapp.com",
+projectId: "bs-box-pedidos"
+}
+
+firebase.initializeApp(firebaseConfig)
+const db = firebase.firestore()
+
+/* =========================
+   VARIAVEIS
+========================= */
 let produtos=[]
 let pedido={}
 let numeroPedido=Date.now()
 let clienteSelecionado=null
 let clienteNome=""
-let clientesCache=[] // 🔥 CACHE GLOBAL
+let clientesCache=[]
 
-/* INIT SEGURO */
-window.onload = async function(){
+/* =========================
+   INIT SEGURO
+========================= */
+document.addEventListener("DOMContentLoaded", function(){
 
-document.getElementById("pedidoNumero").innerText = "Pedido " + numeroPedido
+let pedidoEl = document.getElementById("pedidoNumero")
+if(pedidoEl){
+pedidoEl.innerText = "Pedido " + numeroPedido
+}
 
-// 🔥 1. CARREGA CACHE LOCAL INSTANTÂNEO
+// 🔥 CACHE
 carregarCacheLocal()
-
-// 🔥 2. ATUALIZA EM SEGUNDO PLANO (SEM TRAVAR)
 atualizarClientesFirebase()
 
 carregarCatalogo()
 
-document.getElementById("buscaCliente").addEventListener("input", buscarClientes)
-document.getElementById("busca").addEventListener("input", render)
-document.getElementById("filtroCategoria").addEventListener("change", render)
-document.getElementById("filtroFornecedor").addEventListener("change", render)
-}
+document.getElementById("buscaCliente")?.addEventListener("input", buscarClientes)
+document.getElementById("busca")?.addEventListener("input", render)
+document.getElementById("filtroCategoria")?.addEventListener("change", render)
+document.getElementById("filtroFornecedor")?.addEventListener("change", render)
+
+})
 
 /* =========================
    🔥 CACHE CLIENTES
 ========================= */
 
-// CARREGA DO LOCALSTORAGE
 function carregarCacheLocal(){
 let cacheLocal = localStorage.getItem("clientesCache")
 
 if(cacheLocal){
 clientesCache = JSON.parse(cacheLocal)
-console.log("Cache local carregado:", clientesCache.length)
+console.log("Cache carregado:", clientesCache.length)
 }
 }
 
-// SALVA NO LOCALSTORAGE
 function salvarCacheLocal(){
 localStorage.setItem("clientesCache", JSON.stringify(clientesCache))
 }
 
-// ATUALIZA DO FIREBASE
 async function atualizarClientesFirebase(){
 try{
 let snap = await db.collection("clientes").get()
@@ -61,7 +76,6 @@ id: doc.id,
 })
 
 salvarCacheLocal()
-
 console.log("Clientes atualizados do Firebase")
 
 }catch(e){
@@ -69,7 +83,9 @@ console.log("Sem internet, usando cache local")
 }
 }
 
-/* UTIL */
+/* =========================
+   UTIL
+========================= */
 function normalizar(t){
 return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 }
@@ -83,7 +99,9 @@ if(!campo || !termo) return false
 return normalizar(campo).includes(termo)
 }
 
-/* CATALOGO */
+/* =========================
+   CATALOGO
+========================= */
 function carregarCatalogo(){
 fetch("base_de_produtos.xlsx")
 .then(r=>{
@@ -121,6 +139,8 @@ function popularFiltros(){
 let cat=document.getElementById("filtroCategoria")
 let forn=document.getElementById("filtroFornecedor")
 
+if(!cat || !forn) return
+
 cat.innerHTML='<option value="">Todas</option>'
 forn.innerHTML='<option value="">Todos</option>'
 
@@ -130,11 +150,13 @@ forn.innerHTML='<option value="">Todos</option>'
 
 function render(){
 
-let busca=normalizar(document.getElementById("busca").value)
-let categoria=document.getElementById("filtroCategoria").value
-let fornecedor=document.getElementById("filtroFornecedor").value
+let busca=normalizar(document.getElementById("busca")?.value)
+let categoria=document.getElementById("filtroCategoria")?.value
+let fornecedor=document.getElementById("filtroFornecedor")?.value
 
 let lista=document.getElementById("lista")
+if(!lista) return
+
 lista.innerHTML=""
 
 produtos.filter(p=>{
@@ -163,9 +185,11 @@ lista.appendChild(div)
 renderPedido()
 }
 
-/* PEDIDO */
+/* =========================
+   PEDIDO
+========================= */
 function addItem(c){
-let q=parseInt(document.getElementById("q_"+c).value)
+let q=parseInt(document.getElementById("q_"+c)?.value)
 let prod=produtos.find(p=>p.codigo==c)
 
 if(!q || q<prod.pedidoMin){
@@ -179,6 +203,8 @@ render()
 
 function renderPedido(){
 let box=document.getElementById("pedido")
+if(!box) return
+
 box.innerHTML=""
 let total=0
 
@@ -193,7 +219,10 @@ ${p.descricao} - ${p.qtd}x
 <button onclick="removerItem('${p.codigo}')">X</button><br>`
 })
 
-document.getElementById("totalPedido").innerText="Total "+total.toFixed(2)
+let totalEl = document.getElementById("totalPedido")
+if(totalEl){
+totalEl.innerText="Total "+total.toFixed(2)
+}
 }
 
 function alterarValor(c,v){
@@ -206,12 +235,14 @@ delete pedido[c]
 render()
 }
 
-/* CLIENTES (AGORA COM CACHE) */
+/* =========================
+   CLIENTES
+========================= */
 function buscarClientes(){
 
-let texto = document.getElementById("buscaCliente").value
+let texto = document.getElementById("buscaCliente")?.value
 
-if(texto.length < 2){
+if(!texto || texto.length < 2){
 document.getElementById("listaClientes").innerHTML=""
 return
 }
@@ -259,7 +290,9 @@ lista.appendChild(div)
 })
 }
 
-/* CLIENTE */
+/* =========================
+   CLIENTE
+========================= */
 function salvarCliente(){
 
 let cliente = {
@@ -286,7 +319,6 @@ return
 
 db.collection("clientes").add(cliente).then((docRef)=>{
 
-// 🔥 ATUALIZA CACHE IMEDIATO
 cliente.id = docRef.id
 clientesCache.push(cliente)
 salvarCacheLocal()
@@ -295,7 +327,9 @@ alert("Cliente salvo com sucesso")
 })
 }
 
-/* CNPJ */
+/* =========================
+   CNPJ
+========================= */
 async function buscarCNPJ(){
 let c = limparNumero(cnpj.value)
 
@@ -315,7 +349,9 @@ bairro.value = d.bairro || ""
 rua.value = d.logradouro || ""
 }
 
-/* FIREBASE */
+/* =========================
+   PEDIDO FIREBASE
+========================= */
 function salvarPedidoFirebase(){
 
 if(!clienteSelecionado){
@@ -336,15 +372,5 @@ pedido={}
 render()
 })
 }
-
-/* FIREBASE INIT */
-const firebaseConfig = {
-apiKey: "AIzaSy...",
-authDomain: "bs-box-pedidos.firebaseapp.com",
-projectId: "bs-box-pedidos"
-}
-
-firebase.initializeApp(firebaseConfig)
-const db = firebase.firestore()
 
 </script>
