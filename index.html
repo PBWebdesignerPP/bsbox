@@ -92,15 +92,111 @@ db = firebase.firestore()
 
 document.getElementById("pedidoNumero").innerText = "Pedido " + numeroPedido
 
-carregarCatalogo()
+// 🔥 CLIENTES (VOLTOU)
+carregarCacheLocal()
+atualizarClientesFirebase()
+document.getElementById("buscaCliente").addEventListener("input", buscarClientes)
 
+// 🔥 PRODUTOS
+carregarCatalogo()
 document.getElementById("busca").addEventListener("input", render)
 document.getElementById("filtroCategoria").addEventListener("change", render)
 document.getElementById("filtroFornecedor").addEventListener("change", render)
 
 })
 
-/* CATALOGO */
+/* =========================
+   CACHE CLIENTES
+========================= */
+function carregarCacheLocal(){
+let c = localStorage.getItem("clientesCache")
+if(c) clientesCache = JSON.parse(c)
+}
+
+function salvarCacheLocal(){
+localStorage.setItem("clientesCache", JSON.stringify(clientesCache))
+}
+
+async function atualizarClientesFirebase(){
+try{
+let snap = await db.collection("clientes").get()
+clientesCache=[]
+snap.forEach(doc=>{
+clientesCache.push({id:doc.id,...doc.data()})
+})
+salvarCacheLocal()
+}catch(e){
+console.log("Sem internet, usando cache")
+}
+}
+
+/* =========================
+   UTIL
+========================= */
+function normalizar(t){
+return (t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+}
+function limparNumero(t){
+return (t||"").replace(/\D/g,"")
+}
+
+/* =========================
+   BUSCA CLIENTES
+========================= */
+function buscarClientes(){
+
+let texto = document.getElementById("buscaCliente").value
+
+if(texto.length < 2){
+document.getElementById("listaClientes").innerHTML=""
+return
+}
+
+let termo = normalizar(texto)
+let termoNumero = limparNumero(texto)
+
+let lista = document.getElementById("listaClientes")
+lista.innerHTML=""
+
+clientesCache.forEach(c=>{
+
+let match =
+normalizar(c.nome).includes(termo) ||
+normalizar(c.nomeFantasia).includes(termo) ||
+normalizar(c.cidade).includes(termo) ||
+normalizar(c.bairro).includes(termo) ||
+normalizar(c.rua).includes(termo) ||
+normalizar(c.nomeContato).includes(termo) ||
+normalizar(c.telefone).includes(termo)
+
+if(termoNumero){
+match = match || limparNumero(c.cnpj).includes(termoNumero)
+}
+
+if(match){
+let div=document.createElement("div")
+div.innerHTML = `<b>${c.nome}</b><br><small>${c.nomeFantasia}</small>`
+
+div.onclick=()=>{
+clienteSelecionado=c.id
+clienteNome=c.nome
+
+document.getElementById("buscaCliente").value=c.nome
+lista.innerHTML=""
+
+let box = document.getElementById("clienteSelecionadoBox")
+box.style.display="block"
+box.innerHTML=`Cliente selecionado:<br><b>${c.nome}</b>`
+}
+
+lista.appendChild(div)
+}
+})
+}
+
+/* =========================
+   CATALOGO
+========================= */
 function carregarCatalogo(){
 fetch("base_de_produtos.xlsx")
 .then(r=>r.arrayBuffer())
@@ -136,7 +232,9 @@ forn.innerHTML='<option value="">Todos</option>'
 ;[...new Set(produtos.map(p=>p.fornecedor))].forEach(f=>forn.innerHTML+=`<option>${f}</option>`)
 }
 
-/* RENDER */
+/* =========================
+   RENDER PRODUTOS
+========================= */
 function render(){
 
 let busca=document.getElementById("busca").value.toLowerCase()
@@ -173,7 +271,9 @@ lista.appendChild(div)
 renderPedido()
 }
 
-/* PEDIDO */
+/* =========================
+   PEDIDO
+========================= */
 function addItem(c){
 let q=parseInt(document.getElementById("q_"+c).value)
 let prod=produtos.find(p=>p.codigo==c)
@@ -216,7 +316,9 @@ delete pedido[c]
 render()
 }
 
-/* FIREBASE */
+/* =========================
+   FIREBASE PEDIDO
+========================= */
 function salvarPedidoFirebase(){
 if(!clienteSelecionado) return alert("Selecione um cliente")
 
